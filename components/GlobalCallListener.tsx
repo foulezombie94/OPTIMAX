@@ -83,20 +83,24 @@ export default function GlobalCallListener() {
       if (session?.user) {
         console.log("[GlobalCallListener] Active user session found:", session.user.id);
         setCurrentUserId(session.user.id);
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id, username, email, avatar_url')
-          .eq('id', session.user.id)
-          .single();
-        if (profile) {
-          console.log("[GlobalCallListener] User profile fetched:", profile.username);
-          setCurrentUserProfile({
-            id: profile.id,
-            displayName: profile.username || session.user.email?.split('@')[0] || 'Me',
-            username: profile.username || session.user.email?.split('@')[0] || 'me',
-            avatarUrl: profile.avatar_url || undefined
-          });
+        let profileData: any = null;
+        try {
+          const { data } = await supabase
+            .from('profiles')
+            .select('id, username, email, avatar_url')
+            .eq('id', session.user.id)
+            .single();
+          profileData = data;
+        } catch (e) {
+          console.warn("[GlobalCallListener] Profile query bypassed or failed, using auth fallback:", e);
         }
+
+        setCurrentUserProfile({
+          id: session.user.id,
+          displayName: profileData?.username || session.user.email?.split('@')[0] || 'User',
+          username: profileData?.username || session.user.email?.split('@')[0] || 'user',
+          avatarUrl: profileData?.avatar_url || undefined
+        });
       } else {
         console.log("[GlobalCallListener] No active user session found.");
       }
@@ -507,9 +511,9 @@ export default function GlobalCallListener() {
           event: 'call-initiated',
           payload: {
             callerId: currentUserId,
-            callerName: currentUserProfile.displayName,
-            callerUsername: currentUserProfile.username,
-            callerAvatarUrl: currentUserProfile.avatarUrl,
+            callerName: currentUserProfile?.displayName || 'User',
+            callerUsername: currentUserProfile?.username || 'user',
+            callerAvatarUrl: currentUserProfile?.avatarUrl || '',
             callType: type
           }
         });
