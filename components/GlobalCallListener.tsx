@@ -26,6 +26,18 @@ const getAvatarColor = (name: string) => {
   return colors[sum % colors.length];
 };
 
+const HIGH_QUALITY_VIDEO_CONSTRAINTS = {
+  width: { ideal: 1920 },
+  height: { ideal: 1080 },
+  frameRate: { ideal: 60, min: 24 }
+};
+
+const HIGH_QUALITY_AUDIO_CONSTRAINTS = {
+  echoCancellation: true,
+  noiseSuppression: true,
+  autoGainControl: true
+};
+
 export default function GlobalCallListener() {
   const router = useRouter();
   const pathname = usePathname();
@@ -304,7 +316,10 @@ export default function GlobalCallListener() {
     let stream = localStreamRef.current;
     if (!stream) {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: callTypeRef.current === 'video', audio: true });
+        stream = await navigator.mediaDevices.getUserMedia({ 
+          video: callTypeRef.current === 'video' ? HIGH_QUALITY_VIDEO_CONSTRAINTS : false, 
+          audio: HIGH_QUALITY_AUDIO_CONSTRAINTS 
+        });
         setLocalStream(stream);
       } catch (e) {
         console.error("Could not obtain user media", e);
@@ -337,7 +352,10 @@ export default function GlobalCallListener() {
       let stream = localStreamRef.current;
       if (!stream) {
         try {
-          stream = await navigator.mediaDevices.getUserMedia({ video: callTypeRef.current === 'video', audio: true });
+          stream = await navigator.mediaDevices.getUserMedia({ 
+            video: callTypeRef.current === 'video' ? HIGH_QUALITY_VIDEO_CONSTRAINTS : false, 
+            audio: HIGH_QUALITY_AUDIO_CONSTRAINTS 
+          });
           setLocalStream(stream);
         } catch (e) {
           console.error("Could not obtain user media", e);
@@ -594,7 +612,10 @@ export default function GlobalCallListener() {
 
     let stream: MediaStream | null = null;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: type === 'video', audio: true });
+      stream = await navigator.mediaDevices.getUserMedia({ 
+        video: type === 'video' ? HIGH_QUALITY_VIDEO_CONSTRAINTS : false, 
+        audio: HIGH_QUALITY_AUDIO_CONSTRAINTS 
+      });
       setLocalStream(stream);
     } catch (e) {
       console.warn("Camera access denied, using initials fallback", e);
@@ -639,7 +660,10 @@ export default function GlobalCallListener() {
     let stream: MediaStream | null = localStreamRef.current;
     if (!stream) {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: callTypeRef.current === 'video', audio: true });
+        stream = await navigator.mediaDevices.getUserMedia({ 
+          video: callTypeRef.current === 'video' ? HIGH_QUALITY_VIDEO_CONSTRAINTS : false, 
+          audio: HIGH_QUALITY_AUDIO_CONSTRAINTS 
+        });
         setLocalStream(stream);
       } catch (e) {
         console.warn("Camera access denied, using initials fallback", e);
@@ -716,7 +740,7 @@ export default function GlobalCallListener() {
 
     if (callType === 'audio') {
       try {
-        const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const videoStream = await navigator.mediaDevices.getUserMedia({ video: HIGH_QUALITY_VIDEO_CONSTRAINTS });
         const videoTrack = videoStream.getVideoTracks()[0];
         
         localStreamRef.current.addTrack(videoTrack);
@@ -736,7 +760,7 @@ export default function GlobalCallListener() {
         setIsCamOff(!videoTrack.enabled);
       } else {
         try {
-          const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+          const videoStream = await navigator.mediaDevices.getUserMedia({ video: HIGH_QUALITY_VIDEO_CONSTRAINTS });
           const newVideoTrack = videoStream.getVideoTracks()[0];
           localStreamRef.current.addTrack(newVideoTrack);
           if (pcRef.current) {
@@ -754,6 +778,11 @@ export default function GlobalCallListener() {
     if (!localStreamRef.current || !pcRef.current) return;
 
     if (!isScreenSharing) {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+        alert("Le partage d'écran n'est pas pris en charge nativement par votre navigateur. Essayez sur un ordinateur ou mettez à jour votre appareil.");
+        return;
+      }
+
       try {
         const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
         const screenTrack = displayStream.getVideoTracks()[0];
@@ -762,7 +791,7 @@ export default function GlobalCallListener() {
           if (!localStreamRef.current || !pcRef.current) return;
           const videoSender = pcRef.current.getSenders().find(s => s.track && s.track.kind === 'video');
           try {
-            const camStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            const camStream = await navigator.mediaDevices.getUserMedia({ video: HIGH_QUALITY_VIDEO_CONSTRAINTS });
             const camTrack = camStream.getVideoTracks()[0];
             if (videoSender) {
               videoSender.replaceTrack(camTrack);
@@ -807,10 +836,9 @@ export default function GlobalCallListener() {
         console.error("Screen sharing failed", e);
       }
     } else {
-      // Revert is handled by stopScreenShare within closure, or we can just duplicate logic:
       const videoSender = pcRef.current.getSenders().find(s => s.track && s.track.kind === 'video');
       try {
-        const camStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const camStream = await navigator.mediaDevices.getUserMedia({ video: HIGH_QUALITY_VIDEO_CONSTRAINTS });
         const camTrack = camStream.getVideoTracks()[0];
         if (videoSender) {
           videoSender.replaceTrack(camTrack);
@@ -851,14 +879,17 @@ export default function GlobalCallListener() {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: nextMode },
-        audio: true
+        video: { ...HIGH_QUALITY_VIDEO_CONSTRAINTS, facingMode: nextMode },
+        audio: HIGH_QUALITY_AUDIO_CONSTRAINTS
       });
       setLocalStream(stream);
       playBeep(480, 'sine', 0.1);
     } catch (e) {
       console.warn("Failed to flip camera, reverting", e);
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: HIGH_QUALITY_VIDEO_CONSTRAINTS, 
+        audio: HIGH_QUALITY_AUDIO_CONSTRAINTS 
+      });
       setLocalStream(stream);
       setFacingMode('user');
     }
@@ -1081,14 +1112,19 @@ export default function GlobalCallListener() {
             </div>
           ) : (
             // Connected view
-            <div className="flex-grow w-full h-full relative overflow-hidden">
+            <div className="flex-grow w-full h-full relative overflow-hidden bg-[#0b0c10]">
               <canvas 
                 ref={partnerCanvasRef} 
                 onMouseMove={handleCanvasMouseMove}
                 onMouseLeave={handleCanvasMouseLeave}
-                className="absolute inset-0 w-full h-full object-cover cursor-crosshair"
+                className={`absolute inset-0 w-full h-full object-cover cursor-crosshair ${callType === 'video' ? 'hidden' : 'block'}`}
               />
-              <video id="remoteVideo" autoPlay playsInline className="hidden" />
+              <video 
+                id="remoteVideo" 
+                autoPlay 
+                playsInline 
+                className={`absolute inset-0 w-full h-full object-cover ${callType === 'video' ? 'block' : 'hidden'}`} 
+              />
 
               {/* Snapchat-style PiP window */}
               {callType === 'video' && (
