@@ -475,6 +475,76 @@ export default function GlobalCallListener() {
     };
   }, [currentUserId, currentUserProfile]);
 
+  // Hook to listen to call initiation trigger messages in DB (100% reliable hybrid wake-up)
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    console.log("[GlobalCallListener] Setting up global DB incoming call listener for user:", currentUserId);
+    const dbCallChannel = supabase
+      .channel('global_incoming_calls_db')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `receiver_id=eq.${currentUserId}`
+        },
+        async (payload: any) => {
+          const newMsg = payload.new as { id: string; sender_id: string; content: string; created_at: string };
+          console.log("[GlobalCallListener] Global DB listener received new message:", newMsg.content);
+
+          if (
+            newMsg.content === '__CALL_INITIATED_AUDIO__' ||
+            newMsg.content === '__CALL_INITIATED_VIDEO__'
+          ) {
+            console.log("[GlobalCallListener] Detected call trigger message in DB!");
+            if (callStatusRef.current !== 'idle') {
+              console.log("[GlobalCallListener] Client is busy, ignoring.");
+              return;
+            }
+
+            // Fetch partner profile to display details
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('id, username, email, avatar_url')
+              .eq('id', newMsg.sender_id)
+              .single();
+
+            const partnerObj = {
+              id: newMsg.sender_id,
+              displayName: profile?.username || profile?.email?.split('@')[0] || 'User',
+              username: profile?.username || profile?.email?.split('@')[0] || 'user',
+              avatarUrl: profile?.avatar_url || undefined
+            };
+
+            setCallPartner(partnerObj);
+            setCallType(newMsg.content === '__CALL_INITIATED_VIDEO__' ? 'video' : 'audio');
+            setCallStatus('calling-incoming');
+
+            // Setup temporary partner channel for WebRTC signaling
+            if (partnerChannelRef.current) {
+              await supabase.removeChannel(partnerChannelRef.current);
+            }
+            const pChannelName = `user_calls_${newMsg.sender_id}`;
+            const existingPartner = supabase.channel(pChannelName);
+            await supabase.removeChannel(existingPartner);
+
+            const pChannel = supabase.channel(pChannelName);
+            partnerChannelRef.current = pChannel;
+            pChannel.subscribe((status: any) => {
+              console.log(`[GlobalCallListener] Callee's partner channel status to caller: ${status}`);
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(dbCallChannel);
+    };
+  }, [currentUserId]);
+
   const startCall = async (type: 'audio' | 'video', partner: { id: string; displayName: string; username: string; avatarUrl?: string }) => {
     console.log(`[GlobalCallListener] Starting outgoing ${type} call to: ${partner.displayName} (${partner.id})`);
     setCallType(type);
@@ -500,6 +570,18 @@ export default function GlobalCallListener() {
       setLocalStream(stream);
     } catch (e) {
       console.warn("Camera access denied, using initials fallback", e);
+    }
+
+    // Insert calling trigger message in DB for 100% reliable wake-up
+    try {
+      console.log(`[GlobalCallListener] Inserting calling trigger message in DB for receiver: ${partner.id}`);
+      await supabase.from('messages').insert({
+        sender_id: currentUserId,
+        receiver_id: partner.id,
+        content: type === 'video' ? '__CALL_INITIATED_VIDEO__' : '__CALL_INITIATED_AUDIO__'
+      });
+    } catch (dbErr) {
+      console.error("[GlobalCallListener] Failed to insert trigger message:", dbErr);
     }
 
     pChannel.subscribe((status: any) => {

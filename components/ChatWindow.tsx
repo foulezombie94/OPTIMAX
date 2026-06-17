@@ -319,6 +319,25 @@ export default function ChatWindow({
                           <span className="material-symbols-outlined text-[20px]">cloud_download</span>
                         </button>
                       </div>
+                    ) : (msg.content === '__CALL_INITIATED_AUDIO__' || msg.content === '__CALL_INITIATED_VIDEO__') ? (
+                      /* Call Log Bubble */
+                      <div 
+                        className={`px-4 py-2.5 rounded-lg text-[13px] font-semibold flex items-center gap-2 select-none ${
+                          isMe 
+                            ? 'bg-blue-700/40 text-blue-100 border border-blue-500/20' 
+                            : 'bg-slate-150 text-slate-700 border border-slate-200'
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[18px]">
+                          {msg.content === '__CALL_INITIATED_VIDEO__' ? 'videocam' : 'call'}
+                        </span>
+                        <span>
+                          {isMe 
+                            ? (msg.content === '__CALL_INITIATED_VIDEO__' ? 'Vous avez lancé un appel vidéo' : 'Vous avez lancé un appel vocal') 
+                            : (msg.content === '__CALL_INITIATED_VIDEO__' ? 'Appel vidéo manqué' : 'Appel vocal manqué')
+                          }
+                        </span>
+                      </div>
                     ) : (
                       /* Standard bubble */
                       <div 
