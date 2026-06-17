@@ -45,6 +45,7 @@ export default function GlobalCallListener() {
   const [speakerOn, setSpeakerOn] = useState(true);
   const [pipCorner, setPipCorner] = useState<'top-right' | 'bottom-right' | 'bottom-left' | 'top-left'>('top-right');
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
 
   // Call Partner Details
   const [callPartner, setCallPartner] = useState<{
@@ -265,12 +266,32 @@ export default function GlobalCallListener() {
       }
     };
 
+    pc.onnegotiationneeded = async () => {
+      console.log("[GlobalCallListener] Negotiation needed, creating offer...");
+      try {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        if (partnerChannelRef.current) {
+          partnerChannelRef.current.send({
+            type: 'broadcast',
+            event: 'webrtc-offer',
+            payload: { sdp: offer }
+          });
+        }
+      } catch (e) {
+        console.error("Negotiation needed error", e);
+      }
+    };
+
     pc.ontrack = (event) => {
       console.log("[GlobalCallListener] Received remote track stream");
       const remoteStream = event.streams[0];
       const remoteVideo = document.getElementById('remoteVideo') as HTMLVideoElement;
       if (remoteVideo) {
         remoteVideo.srcObject = remoteStream;
+      }
+      if (event.track.kind === 'video') {
+        setCallType('video');
       }
     };
 
@@ -307,21 +328,28 @@ export default function GlobalCallListener() {
 
   const handleOffer = async (sdp: RTCSessionDescriptionInit) => {
     console.log("[GlobalCallListener] Handling WebRTC Offer SDP");
-    setCallStatus('connected');
-    playBeep(660, 'sine', 0.15);
+    
+    let pc = pcRef.current;
+    if (!pc) {
+      setCallStatus('connected');
+      playBeep(660, 'sine', 0.15);
 
-    let stream = localStreamRef.current;
-    if (!stream) {
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: callTypeRef.current === 'video', audio: true });
-        setLocalStream(stream);
-      } catch (e) {
-        console.error("Could not obtain user media", e);
-        return;
+      let stream = localStreamRef.current;
+      if (!stream) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ video: callTypeRef.current === 'video', audio: true });
+          setLocalStream(stream);
+        } catch (e) {
+          console.error("Could not obtain user media", e);
+          return;
+        }
       }
+
+      pc = createPeerConnection(stream);
+    } else {
+      console.log("[GlobalCallListener] Renegotiating existing connection");
     }
 
-    const pc = createPeerConnection(stream);
     await pc.setRemoteDescription(new RTCSessionDescription(sdp));
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
@@ -679,18 +707,126 @@ export default function GlobalCallListener() {
     }
     setCallStatus('idle');
     setCallPartner(null);
+    setIsScreenSharing(false);
     playBeep(220, 'sine', 0.25);
   };
 
-  const toggleCam = () => {
-    if (localStreamRef.current) {
-      const videoTrack = localStreamRef.current.getVideoTracks()[0];
+  const toggleCam = async () => {
+    if (!localStreamRef.current) return;
+
+    if (callType === 'audio') {
+      try {
+        const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const videoTrack = videoStream.getVideoTracks()[0];
+        
+        localStreamRef.current.addTrack(videoTrack);
+        if (pcRef.current) {
+          pcRef.current.addTrack(videoTrack, localStreamRef.current);
+        }
+        setCallType('video');
+        setIsCamOff(false);
+        playBeep(480, 'sine', 0.1);
+      } catch (e) {
+        console.error("Failed to upgrade to video", e);
+      }
+    } else {
+      const videoTrack = localStreamRef.current.getVideoTracks().find(t => t.kind === 'video' && !t.label.toLowerCase().includes('screen'));
       if (videoTrack) {
         videoTrack.enabled = !videoTrack.enabled;
         setIsCamOff(!videoTrack.enabled);
+      } else {
+        try {
+          const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
+          const newVideoTrack = videoStream.getVideoTracks()[0];
+          localStreamRef.current.addTrack(newVideoTrack);
+          if (pcRef.current) {
+            pcRef.current.addTrack(newVideoTrack, localStreamRef.current);
+          }
+          setIsCamOff(false);
+        } catch(e) {
+          console.error("Failed to recreate camera track", e);
+        }
+      }
+    }
+  };
+
+  const toggleScreenShare = async () => {
+    if (!localStreamRef.current || !pcRef.current) return;
+
+    if (!isScreenSharing) {
+      try {
+        const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        const screenTrack = displayStream.getVideoTracks()[0];
+
+        const stopScreenShare = async () => {
+          if (!localStreamRef.current || !pcRef.current) return;
+          const videoSender = pcRef.current.getSenders().find(s => s.track && s.track.kind === 'video');
+          try {
+            const camStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            const camTrack = camStream.getVideoTracks()[0];
+            if (videoSender) {
+              videoSender.replaceTrack(camTrack);
+            }
+            const oldTracks = localStreamRef.current.getVideoTracks();
+            oldTracks.forEach(t => {
+               t.stop();
+               localStreamRef.current?.removeTrack(t);
+            });
+            localStreamRef.current.addTrack(camTrack);
+            setIsScreenSharing(false);
+            setIsCamOff(false);
+            playBeep(400, 'sine', 0.1);
+          } catch (e) {
+             console.warn("Could not revert to camera", e);
+          }
+        };
+
+        screenTrack.onended = () => {
+          stopScreenShare();
+        };
+
+        const videoSender = pcRef.current.getSenders().find(s => s.track && s.track.kind === 'video');
+        if (videoSender) {
+          videoSender.replaceTrack(screenTrack);
+        } else {
+          pcRef.current.addTrack(screenTrack, localStreamRef.current);
+        }
+
+        const oldTracks = localStreamRef.current.getVideoTracks();
+        oldTracks.forEach(t => {
+           t.stop();
+           localStreamRef.current?.removeTrack(t);
+        });
+        localStreamRef.current.addTrack(screenTrack);
+        
+        setIsScreenSharing(true);
+        setCallType('video');
+        setIsCamOff(false);
+        playBeep(600, 'sine', 0.1);
+      } catch (e) {
+        console.error("Screen sharing failed", e);
       }
     } else {
-      setIsCamOff(!isCamOff);
+      // Revert is handled by stopScreenShare within closure, or we can just duplicate logic:
+      const videoSender = pcRef.current.getSenders().find(s => s.track && s.track.kind === 'video');
+      try {
+        const camStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const camTrack = camStream.getVideoTracks()[0];
+        if (videoSender) {
+          videoSender.replaceTrack(camTrack);
+        }
+        const oldTracks = localStreamRef.current.getVideoTracks();
+        oldTracks.forEach(t => {
+           t.stop();
+           localStreamRef.current?.removeTrack(t);
+        });
+        localStreamRef.current.addTrack(camTrack);
+        setIsScreenSharing(false);
+        setIsCamOff(false);
+        playBeep(400, 'sine', 0.1);
+      } catch (e) {
+         console.warn("Could not revert to camera", e);
+      }
     }
   };
 
@@ -1109,7 +1245,7 @@ export default function GlobalCallListener() {
                 </div>
               </div>
             ) : (
-              <div className="flex items-center justify-center gap-6 w-full max-w-xs">
+              <div className="flex items-center justify-center gap-4 w-full max-w-sm">
                 <button 
                   onClick={toggleMute}
                   className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all cursor-pointer active:scale-90 shadow-md ${
@@ -1117,51 +1253,58 @@ export default function GlobalCallListener() {
                       ? 'bg-red-500/25 border-red-500/40 text-red-400 hover:bg-red-500/35' 
                       : 'bg-white/10 border-white/15 text-white hover:bg-white/15'
                   }`}
+                  title="Couper le micro"
                 >
                   <span className="material-symbols-outlined text-[20px]">{isMuted ? 'mic_off' : 'mic'}</span>
                 </button>
 
+                <div className="flex gap-2 mx-2">
+                  <button 
+                    onClick={toggleCam}
+                    className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all cursor-pointer active:scale-90 shadow-md ${
+                      isCamOff 
+                        ? 'bg-red-500/25 border-red-500/40 text-red-400 hover:bg-red-500/35' 
+                        : 'bg-white/10 border-white/15 text-white hover:bg-white/15'
+                    }`}
+                    title="Activer/Désactiver la caméra"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">{isCamOff ? 'videocam_off' : 'videocam'}</span>
+                  </button>
+
+                  {callStatus === 'connected' && (
+                    <button 
+                      onClick={toggleScreenShare}
+                      className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all cursor-pointer active:scale-90 shadow-md ${
+                        isScreenSharing 
+                          ? 'bg-blue-500/25 border-blue-500/40 text-blue-400 hover:bg-blue-500/35' 
+                          : 'bg-white/10 border-white/15 text-white hover:bg-white/15'
+                      }`}
+                      title="Partager l'écran"
+                    >
+                      <span className="material-symbols-outlined text-[20px]">
+                        {isScreenSharing ? 'stop_screen_share' : 'present_to_all'}
+                      </span>
+                    </button>
+                  )}
+
+                  {callStatus === 'connected' && callType === 'video' && !isCamOff && !isScreenSharing && (
+                    <button 
+                      onClick={flipCamera}
+                      className="w-12 h-12 rounded-full border bg-white/10 border-white/15 text-white hover:bg-white/15 flex items-center justify-center transition-all cursor-pointer active:scale-90 shadow-md"
+                      title="Retourner la caméra"
+                    >
+                      <span className="material-symbols-outlined text-[20px]">flip_camera_ios</span>
+                    </button>
+                  )}
+                </div>
+
                 <button 
                   onClick={endCall}
-                  className="w-16 h-16 bg-red-600 hover:bg-red-700 hover:scale-105 active:scale-95 text-white rounded-full flex items-center justify-center transition-all cursor-pointer shadow-[0_0_25px_rgba(239,68,68,0.55)] border border-red-500/30"
+                  className="w-16 h-16 bg-red-600 hover:bg-red-700 hover:scale-105 active:scale-95 text-white rounded-full flex items-center justify-center transition-all cursor-pointer shadow-[0_0_25px_rgba(239,68,68,0.55)] border border-red-500/30 shrink-0"
+                  title="Raccrocher"
                 >
                   <span className="material-symbols-outlined text-[28px] font-bold">call_end</span>
                 </button>
-
-                {callType === 'video' ? (
-                  <div className="flex gap-4">
-                    <button 
-                      onClick={toggleCam}
-                      className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all cursor-pointer active:scale-90 shadow-md ${
-                        isCamOff 
-                          ? 'bg-red-500/25 border-red-500/40 text-red-400 hover:bg-red-500/35' 
-                          : 'bg-white/10 border-white/15 text-white hover:bg-white/15'
-                      }`}
-                    >
-                      <span className="material-symbols-outlined text-[20px]">{isCamOff ? 'videocam_off' : 'videocam'}</span>
-                    </button>
-
-                    {callStatus === 'connected' && !isCamOff && (
-                      <button 
-                        onClick={flipCamera}
-                        className="w-12 h-12 rounded-full border bg-white/10 border-white/15 text-white hover:bg-white/15 flex items-center justify-center transition-all cursor-pointer active:scale-90 shadow-md"
-                      >
-                        <span className="material-symbols-outlined text-[20px]">flip_camera_ios</span>
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <button 
-                    onClick={() => { setSpeakerOn(!speakerOn); playBeep(580, 'sine', 0.05); }}
-                    className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all cursor-pointer active:scale-90 shadow-md ${
-                      !speakerOn 
-                        ? 'bg-amber-500/25 border-amber-500/40 text-amber-400 hover:bg-amber-500/35' 
-                        : 'bg-white/10 border-white/15 text-white hover:bg-white/15'
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-[20px]">{speakerOn ? 'volume_up' : 'volume_down'}</span>
-                  </button>
-                )}
               </div>
             )}
           </div>
