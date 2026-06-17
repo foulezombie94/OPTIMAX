@@ -125,7 +125,7 @@ export default function ChatWindow({
           table: 'messages',
           filter: `receiver_id=eq.${currentUserId}`
         },
-        (payload) => {
+        (payload: any) => {
           const newMsg = payload.new as { id: string; sender_id: string; content: string; created_at: string };
           if (newMsg.sender_id === partnerId) {
             const isPdf = newMsg.content.toLowerCase().endsWith('.pdf');

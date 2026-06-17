@@ -42,14 +42,15 @@ export default function Conversion3DDropzone({
       }
     };
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then((res: any) => {
+      const session = res?.data?.session;
       setIsLoggedIn(!!session);
       if (session?.user) {
         fetchProStatus(session.user.id);
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
       setIsLoggedIn(!!session);
       if (session?.user) {
         fetchProStatus(session.user.id);

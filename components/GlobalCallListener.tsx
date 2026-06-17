@@ -81,6 +81,7 @@ export default function GlobalCallListener() {
     const fetchSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
+        console.log("[GlobalCallListener] Active user session found:", session.user.id);
         setCurrentUserId(session.user.id);
         const { data: profile } = await supabase
           .from('profiles')
@@ -88,6 +89,7 @@ export default function GlobalCallListener() {
           .eq('id', session.user.id)
           .single();
         if (profile) {
+          console.log("[GlobalCallListener] User profile fetched:", profile.username);
           setCurrentUserProfile({
             id: profile.id,
             displayName: profile.username || session.user.email?.split('@')[0] || 'Me',
@@ -95,15 +97,19 @@ export default function GlobalCallListener() {
             avatarUrl: profile.avatar_url || undefined
           });
         }
+      } else {
+        console.log("[GlobalCallListener] No active user session found.");
       }
     };
     fetchSession();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
       if (session?.user) {
+        console.log("[GlobalCallListener] Auth state changed (logged in):", session.user.id);
         setCurrentUserId(session.user.id);
         fetchSession();
       } else {
+        console.log("[GlobalCallListener] Auth state changed (logged out)");
         setCurrentUserId(null);
         setCurrentUserProfile(null);
       }
@@ -228,6 +234,7 @@ export default function GlobalCallListener() {
 
   // WebRTC Peer Connection Helper
   const createPeerConnection = (stream: MediaStream) => {
+    console.log("[GlobalCallListener] Creating RTCPeerConnection");
     if (pcRef.current) {
       pcRef.current.close();
     }
@@ -245,6 +252,7 @@ export default function GlobalCallListener() {
 
     pc.onicecandidate = (event) => {
       if (event.candidate && partnerChannelRef.current) {
+        console.log("[GlobalCallListener] Sending WebRTC ICE candidate to partner");
         partnerChannelRef.current.send({
           type: 'broadcast',
           event: 'webrtc-ice',
@@ -254,6 +262,7 @@ export default function GlobalCallListener() {
     };
 
     pc.ontrack = (event) => {
+      console.log("[GlobalCallListener] Received remote track stream");
       const remoteStream = event.streams[0];
       const remoteVideo = document.getElementById('remoteVideo') as HTMLVideoElement;
       if (remoteVideo) {
@@ -266,6 +275,7 @@ export default function GlobalCallListener() {
   };
 
   const initiateWebRTC = async () => {
+    console.log("[GlobalCallListener] Initiating WebRTC Handshake - Creating Offer");
     let stream = localStreamRef.current;
     if (!stream) {
       try {
@@ -282,6 +292,7 @@ export default function GlobalCallListener() {
     await pc.setLocalDescription(offer);
 
     if (partnerChannelRef.current) {
+      console.log("[GlobalCallListener] Sending WebRTC Offer SDP to partner");
       partnerChannelRef.current.send({
         type: 'broadcast',
         event: 'webrtc-offer',
@@ -291,6 +302,7 @@ export default function GlobalCallListener() {
   };
 
   const handleOffer = async (sdp: RTCSessionDescriptionInit) => {
+    console.log("[GlobalCallListener] Handling WebRTC Offer SDP");
     setCallStatus('connected');
     playBeep(660, 'sine', 0.15);
 
@@ -311,6 +323,7 @@ export default function GlobalCallListener() {
     await pc.setLocalDescription(answer);
 
     if (partnerChannelRef.current) {
+      console.log("[GlobalCallListener] Sending WebRTC Answer SDP to partner");
       partnerChannelRef.current.send({
         type: 'broadcast',
         event: 'webrtc-answer',
@@ -320,6 +333,7 @@ export default function GlobalCallListener() {
   };
 
   const handleAnswer = async (sdp: RTCSessionDescriptionInit) => {
+    console.log("[GlobalCallListener] Handling WebRTC Answer SDP");
     if (pcRef.current) {
       await pcRef.current.setRemoteDescription(new RTCSessionDescription(sdp));
     }
@@ -334,6 +348,7 @@ export default function GlobalCallListener() {
     const channelName = `user_calls_${currentUserId}`;
 
     const setupChannel = async () => {
+      console.log(`[GlobalCallListener] Setting up permanent subscription channel: ${channelName}`);
       const existing = supabase.channel(channelName);
       await supabase.removeChannel(existing);
 
@@ -342,12 +357,14 @@ export default function GlobalCallListener() {
       myChannel = supabase.channel(channelName);
       myChannel
         .on('broadcast', { event: 'call-initiated' }, async ({ payload }: { payload: any }) => {
+          console.log("[GlobalCallListener] [BROADCAST] Received 'call-initiated' event:", payload);
           if (callStatusRef.current !== 'idle') {
+            console.log("[GlobalCallListener] Client is busy. Automatically declining incoming call.");
             const busyChannelName = `user_calls_${payload.callerId}`;
             const existingBusy = supabase.channel(busyChannelName);
             await supabase.removeChannel(existingBusy);
             const busyChannel = supabase.channel(busyChannelName);
-            busyChannel.subscribe((status) => {
+            busyChannel.subscribe((status: any) => {
               if (status === 'SUBSCRIBED') {
                 busyChannel.send({
                   type: 'broadcast',
@@ -380,26 +397,34 @@ export default function GlobalCallListener() {
 
           const pChannel = supabase.channel(pChannelName);
           partnerChannelRef.current = pChannel;
-          pChannel.subscribe();
+          pChannel.subscribe((status: any) => {
+            console.log(`[GlobalCallListener] Callee's partner channel status to caller: ${status}`);
+          });
         })
         .on('broadcast', { event: 'call-accepted' }, async () => {
+          console.log("[GlobalCallListener] [BROADCAST] Received 'call-accepted' event.");
           setCallStatus('connected');
           playBeep(660, 'sine', 0.15);
           await initiateWebRTC();
         })
         .on('broadcast', { event: 'call-declined' }, () => {
+          console.log("[GlobalCallListener] [BROADCAST] Received 'call-declined' event.");
           endCallLocally();
         })
         .on('broadcast', { event: 'call-canceled' }, () => {
+          console.log("[GlobalCallListener] [BROADCAST] Received 'call-canceled' event.");
           endCallLocally();
         })
         .on('broadcast', { event: 'webrtc-offer' }, async ({ payload }: { payload: any }) => {
+          console.log("[GlobalCallListener] [BROADCAST] Received 'webrtc-offer'.");
           await handleOffer(payload.sdp);
         })
         .on('broadcast', { event: 'webrtc-answer' }, async ({ payload }: { payload: any }) => {
+          console.log("[GlobalCallListener] [BROADCAST] Received 'webrtc-answer'.");
           await handleAnswer(payload.sdp);
         })
         .on('broadcast', { event: 'webrtc-ice' }, async ({ payload }: { payload: any }) => {
+          console.log("[GlobalCallListener] [BROADCAST] Received 'webrtc-ice' candidate.");
           if (pcRef.current) {
             try {
               await pcRef.current.addIceCandidate(new RTCIceCandidate(payload.candidate));
@@ -408,7 +433,9 @@ export default function GlobalCallListener() {
             }
           }
         })
-        .subscribe();
+        .subscribe((status: string, err?: any) => {
+          console.log(`[GlobalCallListener] Channel ${channelName} subscription status: ${status}`, err || '');
+        });
     };
 
     setupChannel();
@@ -416,6 +443,7 @@ export default function GlobalCallListener() {
     return () => {
       active = false;
       if (myChannel) {
+        console.log(`[GlobalCallListener] Cleaning up subscription for channel: ${channelName}`);
         supabase.removeChannel(myChannel);
       }
     };
@@ -426,6 +454,7 @@ export default function GlobalCallListener() {
     const handleStartCall = (e: Event) => {
       const customEvent = e as CustomEvent;
       const { partnerId, partnerName, partnerUsername, partnerAvatarUrl, type } = customEvent.detail;
+      console.log("[GlobalCallListener] Intercepted 'start-global-call' event for partner:", partnerId);
       const partnerObj = {
         id: partnerId,
         displayName: partnerName,
@@ -443,6 +472,7 @@ export default function GlobalCallListener() {
   }, [currentUserId, currentUserProfile]);
 
   const startCall = async (type: 'audio' | 'video', partner: { id: string; displayName: string; username: string; avatarUrl?: string }) => {
+    console.log(`[GlobalCallListener] Starting outgoing ${type} call to: ${partner.displayName} (${partner.id})`);
     setCallType(type);
     setCallStatus('calling');
     setIsMuted(false);
@@ -468,8 +498,10 @@ export default function GlobalCallListener() {
       console.warn("Camera access denied, using initials fallback", e);
     }
 
-    pChannel.subscribe((status) => {
+    pChannel.subscribe((status: any) => {
+      console.log(`[GlobalCallListener] Outgoing call channel subscription status: ${status}`);
       if (status === 'SUBSCRIBED') {
+        console.log(`[GlobalCallListener] Sending 'call-initiated' broadcast to channel: ${channelName}`);
         pChannel.send({
           type: 'broadcast',
           event: 'call-initiated',
@@ -486,6 +518,7 @@ export default function GlobalCallListener() {
   };
 
   const acceptCall = async () => {
+    console.log("[GlobalCallListener] Accept call button clicked");
     setCallStatus('connected');
     playBeep(660, 'sine', 0.15);
 
@@ -500,6 +533,7 @@ export default function GlobalCallListener() {
     }
 
     if (partnerChannelRef.current) {
+      console.log("[GlobalCallListener] Sending 'call-accepted' broadcast to caller");
       partnerChannelRef.current.send({
         type: 'broadcast',
         event: 'call-accepted',
@@ -509,11 +543,13 @@ export default function GlobalCallListener() {
 
     // Redirect to partner discussion page if not already there
     if (!pathname?.startsWith('/messages/') || currentChatId !== callPartnerRef.current?.id) {
+      console.log("[GlobalCallListener] Redirecting callee to conversation route:", callPartnerRef.current?.id);
       router.push(`/messages/${callPartnerRef.current?.id}`);
     }
   };
 
   const declineCall = () => {
+    console.log("[GlobalCallListener] Decline call button clicked");
     if (partnerChannelRef.current) {
       partnerChannelRef.current.send({
         type: 'broadcast',
@@ -525,6 +561,7 @@ export default function GlobalCallListener() {
   };
 
   const endCall = () => {
+    console.log("[GlobalCallListener] End call button clicked");
     if (partnerChannelRef.current) {
       partnerChannelRef.current.send({
         type: 'broadcast',
@@ -536,6 +573,7 @@ export default function GlobalCallListener() {
   };
 
   const endCallLocally = () => {
+    console.log("[GlobalCallListener] Cleaning up call resources locally");
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach(track => track.stop());
       setLocalStream(null);
@@ -549,6 +587,7 @@ export default function GlobalCallListener() {
       remoteVideo.srcObject = null;
     }
     if (partnerChannelRef.current) {
+      console.log("[GlobalCallListener] Removing partner channel from cache");
       supabase.removeChannel(partnerChannelRef.current);
       partnerChannelRef.current = null;
     }
