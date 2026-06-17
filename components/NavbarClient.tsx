@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslation, SUPPORTED_LANGUAGES } from '@/contexts/TranslationContext';
-// Note: We'll pass a logout action or handle logout client-side, but standard forms work too.
 
 type NavbarClientProps = {
   user: { email?: string; id: string } | null;
@@ -16,14 +15,27 @@ export default function NavbarClient({ user, isPro, username }: NavbarClientProp
   const { t, currentLanguage, setLanguage } = useTranslation();
   const pathname = usePathname();
   const isMessagesPage = pathname?.startsWith('/messages');
+  
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
   const langMenuRef = useRef<HTMLDivElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const hamburgerRef = useRef<HTMLButtonElement>(null);
 
-  // Close dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (langMenuRef.current && !langMenuRef.current.contains(event.target as Node)) {
         setIsLangMenuOpen(false);
+      }
+      if (
+        mobileMenuRef.current && 
+        !mobileMenuRef.current.contains(event.target as Node) &&
+        hamburgerRef.current &&
+        !hamburgerRef.current.contains(event.target as Node)
+      ) {
+        setIsMobileMenuOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -46,7 +58,7 @@ export default function NavbarClient({ user, isPro, username }: NavbarClientProp
             />
           </Link>
 
-          {/* Navigation links */}
+          {/* Desktop Navigation links */}
           <div className="hidden md:flex gap-8 items-center uppercase text-[12.5px] tracking-[0.12em] font-black text-on-surface">
             <Link href="/" className="hover:text-primary transition-colors">
               {t("Espace")}
@@ -70,7 +82,7 @@ export default function NavbarClient({ user, isPro, username }: NavbarClientProp
             <div className="relative" ref={langMenuRef}>
               <button 
                 onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
-                className="flex items-center gap-1 text-on-surface hover:text-primary transition-colors"
+                className="flex items-center gap-1 text-on-surface hover:text-primary transition-colors cursor-pointer"
                 title={currentLangName}
               >
                 <span className="material-symbols-outlined text-[18px]">language</span>
@@ -87,7 +99,7 @@ export default function NavbarClient({ user, isPro, username }: NavbarClientProp
                         setLanguage(lang.code);
                         setIsLangMenuOpen(false);
                       }}
-                      className={`px-4 py-2 text-left text-sm font-bold transition-colors hover:bg-white/10 ${currentLanguage === lang.code ? 'text-primary' : 'text-on-surface'}`}
+                      className={`px-4 py-2 text-left text-sm font-bold transition-colors hover:bg-white/10 cursor-pointer ${currentLanguage === lang.code ? 'text-primary' : 'text-on-surface'}`}
                     >
                       {lang.name}
                     </button>
@@ -118,14 +130,61 @@ export default function NavbarClient({ user, isPro, username }: NavbarClientProp
             {/* Logout (if logged in) */}
             {user && (
               <form action="/auth/signout" method="post" className="flex items-center">
-                <button type="submit" className="text-on-surface hover:text-error transition-colors flex items-center" title={t("Déconnexion")}>
+                <button type="submit" className="text-on-surface hover:text-error transition-colors flex items-center cursor-pointer" title={t("Déconnexion")}>
                   <span className="material-symbols-outlined text-[20px] ml-1">logout</span>
                 </button>
               </form>
             )}
           </div>
+
+          {/* Mobile Hamburger Menu Button */}
+          <button 
+            ref={hamburgerRef}
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="md:hidden text-on-surface hover:text-primary transition-colors flex items-center p-1.5 bg-white/5 border border-white/10 rounded-full cursor-pointer hover:bg-white/10 active:scale-95 transition-all"
+            title="Menu"
+          >
+            <span className="material-symbols-outlined text-[20px]">
+              {isMobileMenuOpen ? 'close' : 'menu'}
+            </span>
+          </button>
         </div>
       </nav>
+
+      {/* Mobile Drawer Dropdown */}
+      {isMobileMenuOpen && (
+        <div 
+          ref={mobileMenuRef}
+          className="absolute top-full left-0 right-0 mt-3 bg-[#00020A]/95 backdrop-blur-xl border border-white/5 rounded-3xl p-5 shadow-2xl flex flex-col gap-1 z-40 md:hidden animate-fade-in"
+        >
+          <Link 
+            href="/" 
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="text-on-surface hover:text-primary transition-colors text-sm font-black uppercase tracking-wider py-3 px-4 rounded-xl hover:bg-white/5 flex items-center justify-between group"
+          >
+            <span>{t("Espace")}</span>
+            <span className="material-symbols-outlined text-[18px] opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward_ios</span>
+          </Link>
+          <Link 
+            href="/community" 
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="text-on-surface hover:text-primary transition-colors text-sm font-black uppercase tracking-wider py-3 px-4 rounded-xl hover:bg-white/5 flex items-center justify-between group"
+          >
+            <span>{t("Communauté")}</span>
+            <span className="material-symbols-outlined text-[18px] opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward_ios</span>
+          </Link>
+          {user && (
+            <Link 
+              href="/messages" 
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="text-on-surface hover:text-primary transition-colors text-sm font-black uppercase tracking-wider py-3 px-4 rounded-xl hover:bg-white/5 flex items-center justify-between group"
+            >
+              <span>{t("Messages")}</span>
+              <span className="material-symbols-outlined text-[18px] opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward_ios</span>
+            </Link>
+          )}
+        </div>
+      )}
     </div>
   );
 }
