@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 
@@ -53,6 +53,17 @@ export default function GlobalCallListener() {
     username: string;
     avatarUrl?: string;
   } | null>(null);
+
+  // Refs to prevent stale closures in permanent listeners
+  const callStatusRef = useRef(callStatus);
+  const callTypeRef = useRef(callType);
+  const localStreamRef = useRef(localStream);
+  const callPartnerRef = useRef(callPartner);
+
+  useEffect(() => { callStatusRef.current = callStatus; }, [callStatus]);
+  useEffect(() => { callTypeRef.current = callType; }, [callType]);
+  useEffect(() => { localStreamRef.current = localStream; }, [localStream]);
+  useEffect(() => { callPartnerRef.current = callPartner; }, [callPartner]);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const partnerCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -255,10 +266,10 @@ export default function GlobalCallListener() {
   };
 
   const initiateWebRTC = async () => {
-    let stream = localStream;
+    let stream = localStreamRef.current;
     if (!stream) {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: callType === 'video', audio: true });
+        stream = await navigator.mediaDevices.getUserMedia({ video: callTypeRef.current === 'video', audio: true });
         setLocalStream(stream);
       } catch (e) {
         console.error("Could not obtain user media", e);
@@ -283,10 +294,10 @@ export default function GlobalCallListener() {
     setCallStatus('connected');
     playBeep(660, 'sine', 0.15);
 
-    let stream = localStream;
+    let stream = localStreamRef.current;
     if (!stream) {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: callType === 'video', audio: true });
+        stream = await navigator.mediaDevices.getUserMedia({ video: callTypeRef.current === 'video', audio: true });
         setLocalStream(stream);
       } catch (e) {
         console.error("Could not obtain user media", e);
@@ -314,7 +325,7 @@ export default function GlobalCallListener() {
     }
   };
 
-  // Permanent signaling listener
+  // Permanent signaling listener - only depends on currentUserId
   useEffect(() => {
     if (!currentUserId) return;
 
@@ -331,7 +342,7 @@ export default function GlobalCallListener() {
       myChannel = supabase.channel(channelName);
       myChannel
         .on('broadcast', { event: 'call-initiated' }, async ({ payload }: { payload: any }) => {
-          if (callStatus !== 'idle') {
+          if (callStatusRef.current !== 'idle') {
             const busyChannelName = `user_calls_${payload.callerId}`;
             const existingBusy = supabase.channel(busyChannelName);
             await supabase.removeChannel(existingBusy);
@@ -408,7 +419,7 @@ export default function GlobalCallListener() {
         supabase.removeChannel(myChannel);
       }
     };
-  }, [currentUserId, callStatus, localStream, callType]);
+  }, [currentUserId]);
 
   // Hook to start a call via Custom Event from ChatWindow
   useEffect(() => {
@@ -478,12 +489,14 @@ export default function GlobalCallListener() {
     setCallStatus('connected');
     playBeep(660, 'sine', 0.15);
 
-    let stream: MediaStream | null = null;
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: callType === 'video', audio: true });
-      setLocalStream(stream);
-    } catch (e) {
-      console.warn("Camera access denied, using initials fallback", e);
+    let stream: MediaStream | null = localStreamRef.current;
+    if (!stream) {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: callTypeRef.current === 'video', audio: true });
+        setLocalStream(stream);
+      } catch (e) {
+        console.warn("Camera access denied, using initials fallback", e);
+      }
     }
 
     if (partnerChannelRef.current) {
@@ -495,8 +508,8 @@ export default function GlobalCallListener() {
     }
 
     // Redirect to partner discussion page if not already there
-    if (!pathname?.startsWith('/messages/') || currentChatId !== callPartner?.id) {
-      router.push(`/messages/${callPartner?.id}`);
+    if (!pathname?.startsWith('/messages/') || currentChatId !== callPartnerRef.current?.id) {
+      router.push(`/messages/${callPartnerRef.current?.id}`);
     }
   };
 
@@ -515,7 +528,7 @@ export default function GlobalCallListener() {
     if (partnerChannelRef.current) {
       partnerChannelRef.current.send({
         type: 'broadcast',
-        event: callStatus === 'calling' ? 'call-canceled' : 'call-declined',
+        event: callStatusRef.current === 'calling' ? 'call-canceled' : 'call-declined',
         payload: { senderId: currentUserId }
       });
     }
@@ -523,8 +536,8 @@ export default function GlobalCallListener() {
   };
 
   const endCallLocally = () => {
-    if (localStream) {
-      localStream.getTracks().forEach(track => track.stop());
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => track.stop());
       setLocalStream(null);
     }
     if (pcRef.current) {
@@ -545,8 +558,8 @@ export default function GlobalCallListener() {
   };
 
   const toggleCam = () => {
-    if (localStream) {
-      const videoTrack = localStream.getVideoTracks()[0];
+    if (localStreamRef.current) {
+      const videoTrack = localStreamRef.current.getVideoTracks()[0];
       if (videoTrack) {
         videoTrack.enabled = !videoTrack.enabled;
         setIsCamOff(!videoTrack.enabled);
@@ -557,8 +570,8 @@ export default function GlobalCallListener() {
   };
 
   const toggleMute = () => {
-    if (localStream) {
-      const audioTrack = localStream.getAudioTracks()[0];
+    if (localStreamRef.current) {
+      const audioTrack = localStreamRef.current.getAudioTracks()[0];
       if (audioTrack) {
         audioTrack.enabled = !audioTrack.enabled;
         setIsMuted(!audioTrack.enabled);
@@ -569,11 +582,11 @@ export default function GlobalCallListener() {
   };
 
   const flipCamera = async () => {
-    if (!localStream || !callPartner) return;
+    if (!localStreamRef.current || !callPartnerRef.current) return;
     const nextMode = facingMode === 'user' ? 'environment' : 'user';
     setFacingMode(nextMode);
 
-    localStream.getTracks().forEach(track => track.stop());
+    localStreamRef.current.getTracks().forEach(track => track.stop());
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -624,7 +637,6 @@ export default function GlobalCallListener() {
   // Particles canvas visualizer loop
   useEffect(() => {
     if ((callStatus !== 'connected' && callStatus !== 'calling-incoming') || !callPartner) return;
-    // Only paint canvas if either connected, or direct chat active (ringing state)
     if (callStatus === 'calling-incoming' && !isDirectChatActive) return;
 
     const canvas = partnerCanvasRef.current;
@@ -764,29 +776,22 @@ export default function GlobalCallListener() {
     };
   }, [callStatus, callPartner, isMuted, isDirectChatActive]);
 
-  // Determine if we should show the full screen overlay or a popup notification
-  // Full overlay is visible:
-  // - If call is connected
-  // - If call is outgoing ('calling')
-  // - If call is incoming ('calling-incoming') AND the user is already inside the direct chat page with the caller
+  // Determine layouts
   const showFullCallOverlay = 
     callStatus === 'connected' ||
     callStatus === 'calling' ||
     (callStatus === 'calling-incoming' && isDirectChatActive);
 
-  // Show floating notification popup:
-  // - If call is incoming ('calling-incoming') AND the user is NOT inside the direct chat page with the caller
   const showIncomingCallPopup = callStatus === 'calling-incoming' && !isDirectChatActive && callPartner;
 
   if (callStatus === 'idle') return null;
 
   return (
     <>
-      {/* 1. Global Call Overlay (Connected, Outgoing, or Active Chat Incoming) */}
+      {/* 1. Global Call Overlay */}
       {showFullCallOverlay && callPartner && (
         <div className="fixed inset-0 bg-[#0b0c10] z-[9999] flex flex-col justify-between text-white select-none animate-fade-in font-sans">
           
-          {/* Ringing / Calling View */}
           {(callStatus === 'calling' || callStatus === 'calling-incoming') ? (
             <div className="flex-grow flex flex-col items-center justify-center relative">
               <div className="relative w-36 h-36 flex items-center justify-center mb-8">
@@ -878,7 +883,7 @@ export default function GlobalCallListener() {
           {/* Controls Bar */}
           <div className="w-full bg-gradient-to-t from-black via-black/85 to-transparent z-20 relative flex flex-col items-center py-6 gap-6">
             
-            {/* Snapchat lens filters (Connected Video Call only) */}
+            {/* Snapchat lens filters */}
             {callStatus === 'connected' && callType === 'video' && (
               <div className="w-full px-8">
                 <div className="flex items-center justify-center gap-4 overflow-x-auto pb-1 scrollbar-none max-w-sm mx-auto">
@@ -957,7 +962,6 @@ export default function GlobalCallListener() {
 
             {/* Action buttons */}
             {callStatus === 'calling-incoming' ? (
-              /* Incoming Controls */
               <div className="flex items-center justify-center gap-12 w-full max-w-xs py-4">
                 <div className="flex flex-col items-center gap-2">
                   <button 
@@ -980,7 +984,6 @@ export default function GlobalCallListener() {
                 </div>
               </div>
             ) : (
-              /* Outgoing or Active Connected Controls */
               <div className="flex items-center justify-center gap-6 w-full max-w-xs">
                 <button 
                   onClick={toggleMute}
@@ -1040,12 +1043,11 @@ export default function GlobalCallListener() {
         </div>
       )}
 
-      {/* 2. Global Glassmorphic Incoming Call Toast Notification (Out-of-Chat View) */}
+      {/* 2. Global Glassmorphic Incoming Call Toast Notification */}
       {showIncomingCallPopup && (
         <div className="fixed top-6 right-6 z-[10000] w-80 bg-slate-950/85 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-2xl text-white flex flex-col gap-3 animate-slide-in select-none font-sans">
           
           <div className="flex items-center gap-3">
-            {/* Pulsing ring around caller avatar */}
             <div className="relative w-12 h-12 shrink-0 flex items-center justify-center">
               <span className="absolute inset-0 bg-blue-500/25 rounded-full animate-ping"></span>
               {callPartner.avatarUrl ? (
