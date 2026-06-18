@@ -1,11 +1,12 @@
 import { createClient } from '@/utils/supabase/server';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-
 export const metadata = {
   title: 'Admin - OptiMax',
   robots: 'noindex, nofollow'
 };
+
+export const dynamic = 'force-dynamic';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
