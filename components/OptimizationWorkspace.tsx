@@ -3,8 +3,10 @@
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 
-const CompressionDropzone = dynamic(() => import('./CompressionDropzone'), { ssr: false });
-const Conversion3DDropzone = dynamic(() => import('./Conversion3DDropzone'), { ssr: false });
+const LoadingPlaceholder = () => <div className="w-full min-h-[400px] rounded-3xl bg-white/5 animate-pulse border border-white/10" />;
+
+const CompressionDropzone = dynamic(() => import('./CompressionDropzone'), { ssr: false, loading: LoadingPlaceholder });
+const Conversion3DDropzone = dynamic(() => import('./Conversion3DDropzone'), { ssr: false, loading: LoadingPlaceholder });
 const ComparisonWidget = dynamic(() => import('./ComparisonWidget'), { ssr: false });
 const VideoComparisonWidget = dynamic(() => import('./VideoComparisonWidget'), { ssr: false });
 const ThreeViewer = dynamic(() => import('./OptimizationsGrid').then((mod) => mod.ThreeViewer), { ssr: false });
