@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import CompressionDropzone from './CompressionDropzone';
-import Conversion3DDropzone from './Conversion3DDropzone';
-import ComparisonWidget from './ComparisonWidget';
-import VideoComparisonWidget from './VideoComparisonWidget';
-import { ThreeViewer } from './OptimizationsGrid';
+import dynamic from 'next/dynamic';
+
+const CompressionDropzone = dynamic(() => import('./CompressionDropzone'), { ssr: false });
+const Conversion3DDropzone = dynamic(() => import('./Conversion3DDropzone'), { ssr: false });
+const ComparisonWidget = dynamic(() => import('./ComparisonWidget'), { ssr: false });
+const VideoComparisonWidget = dynamic(() => import('./VideoComparisonWidget'), { ssr: false });
+const ThreeViewer = dynamic(() => import('./OptimizationsGrid').then((mod) => mod.ThreeViewer), { ssr: false });
 import { useTranslation } from '@/contexts/TranslationContext';
 
 export default function OptimizationWorkspace() {
