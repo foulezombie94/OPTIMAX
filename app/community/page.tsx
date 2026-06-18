@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense, useMemo } from 'react';
+import { useState, useEffect, Suspense, useMemo, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
@@ -33,7 +33,15 @@ function CommunityContent() {
   const [viewedItems, setViewedItems] = useState<string[]>([]);
   const [toastMessage, setToastMessage] = useState('');
   const [isClosing, setIsClosing] = useState(false);
+  const closeTimerRef = useRef<NodeJS.Timeout | null>(null);
   
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    };
+  }, []);
+
   // Pagination limit state
   const [visibleLimit, setVisibleLimit] = useState(9);
   
@@ -135,6 +143,12 @@ function CommunityContent() {
 
   // Handle opening details modal (increments view count at most once per device)
   const handleOpenItem = (item: PublicOptimization) => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+    setIsClosing(false);
+
     const isAlreadyViewed = viewedItems.includes(item.id);
     
     if (!isAlreadyViewed) {
@@ -172,7 +186,7 @@ function CommunityContent() {
   // Handle closing modal
   const handleCloseModal = () => {
     setIsClosing(true);
-    setTimeout(() => {
+    closeTimerRef.current = setTimeout(() => {
       setSelectedItem(null);
       setIsClosing(false);
       window.history.replaceState(null, '', '/community');
