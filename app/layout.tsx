@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Inter, Fredoka } from "next/font/google";
 import { TranslationProvider } from "@/contexts/TranslationContext";
 import Navbar from "@/components/Navbar";
@@ -24,6 +24,13 @@ const fredoka = Fredoka({
 export const metadata: Metadata = {
   title: "OptiMax - Professional File Optimization",
   description: "Impeccable quality. Microscopic weight.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 };
 
 export default function RootLayout({
