@@ -8,7 +8,7 @@ export default function Home() {
       {/* Hero Section */}
       <section className="text-center max-w-3xl mx-auto flex flex-col items-center gap-6">
         <div className="text-center mb-16 relative w-full">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[300px] sm:max-w-[600px] h-[300px] bg-primary/20 blur-[120px] rounded-full pointer-events-none"></div>
+          <div className="absolute top-1/2 left-1/2 w-full max-w-[300px] sm:max-w-[600px] h-[300px] bg-primary/10 md:bg-primary/20 blur-[40px] md:blur-[120px] rounded-full pointer-events-none" style={{ willChange: 'transform', transform: 'translate3d(-50%, -50%, 0)' }}></div>
           
           <h1 className="text-headline-lg font-black mb-6 tracking-tight leading-[1.1]">
             <span className="text-on-background block mb-2"><T>Impeccable quality.</T></span>

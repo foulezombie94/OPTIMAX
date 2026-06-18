@@ -131,6 +131,8 @@
     filter: blur(80px);
     opacity: 0.15;
     animation: float 20s infinite ease-in-out alternate;
+    will-change: transform;
+    transform: translateZ(0); /* Hardware acceleration */
 }
 .blob-1 {
     width: 600px; height: 600px;
@@ -148,6 +150,17 @@
     background: var(--color-tertiary);
     top: 40%; left: 40%;
     animation-duration: 25s;
+}
+
+@media (max-width: 768px) {
+    .blob {
+        animation: none;
+        filter: blur(40px);
+        opacity: 0.1;
+    }
+    .blob-1 { width: 250px; height: 250px; }
+    .blob-2 { width: 200px; height: 200px; }
+    .blob-3 { display: none; }
 }
 
 @keyframes float {
