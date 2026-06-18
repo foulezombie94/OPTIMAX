@@ -4,6 +4,7 @@ import { logout } from '@/app/login/actions';
 import Link from 'next/link';
 import OptimizationsGrid from '@/components/OptimizationsGrid';
 import T from '@/components/Translate';
+import DeactivateAccountButton from './DeactivateAccountButton';
 
 export const metadata = {
   title: 'Profile - OptiMax',
@@ -158,10 +159,7 @@ export default async function ProfilePage() {
                   <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">mail</span>
                   <span className="text-body-md text-on-surface group-hover:text-primary transition-colors"><T>Email Settings</T></span>
                 </a>
-                <a className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors group" href="#">
-                  <span className="material-symbols-outlined text-on-surface-variant group-hover:text-error transition-colors">delete</span>
-                  <span className="text-body-md text-on-surface group-hover:text-error transition-colors"><T>Delete Account</T></span>
-                </a>
+                <DeactivateAccountButton />
               </div>
             </div>
 

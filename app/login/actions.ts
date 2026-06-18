@@ -10,13 +10,27 @@ export async function login(formData: FormData) {
   const password = formData.get('password') as string;
   const next = (formData.get('next') as string) || '/profile';
 
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
 
   if (error) {
     return { error: error.message };
+  }
+
+  // Check if account is deactivated
+  if (data.user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('deactivated_at')
+      .eq('id', data.user.id)
+      .single();
+      
+    if (profile?.deactivated_at) {
+      await supabase.auth.signOut();
+      return { error: "Ce compte a été désactivé. Veuillez contacter le service client pour le réactiver." };
+    }
   }
 
   revalidatePath('/', 'layout');
