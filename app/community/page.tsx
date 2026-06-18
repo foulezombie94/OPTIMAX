@@ -487,12 +487,12 @@ function CommunityContent() {
         {selectedItem && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/85 backdrop-blur-md animate-fade-in" onClick={handleCloseModal}>
             <div 
-              className="glass-panel w-full max-w-6xl rounded-[32px] overflow-hidden flex flex-col md:flex-row relative animate-scale-in bg-[#101014]/95 shadow-[0_20px_60px_rgba(0,0,0,0.6)] border-white/10"
+              className="glass-panel w-full max-w-6xl max-h-[90vh] overflow-y-auto overflow-x-hidden rounded-[32px] flex flex-col md:flex-row relative animate-scale-in bg-[#101014]/95 shadow-[0_20px_60px_rgba(0,0,0,0.6)] border border-white/10"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Close Button */}
               <button 
-                className="absolute top-5 right-5 z-10 w-9.5 h-9.5 flex items-center justify-center rounded-full bg-surface/50 text-on-surface hover:bg-surface border border-white/5 transition-colors focus:outline-none active:scale-95"
+                className="absolute top-4 right-4 md:top-5 md:right-5 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-surface/50 text-on-surface hover:bg-surface border border-white/5 transition-colors focus:outline-none active:scale-95"
                 onClick={handleCloseModal}
               >
                 <span className="material-symbols-outlined text-[22px]">close</span>

@@ -45,8 +45,8 @@ export default function NavbarClient({ user, isPro, username }: NavbarClientProp
   const currentLangName = SUPPORTED_LANGUAGES.find(l => l.code === currentLanguage)?.name || 'Français';
 
   return (
-    <div className={`fixed ${isMessagesPage ? 'top-0' : 'top-6'} left-1/2 -translate-x-1/2 w-[calc(100%-3rem)] max-w-5xl z-50`}>
-      <nav className="bg-[#00020A] shadow-[0_20px_40px_rgba(0,0,0,0.8)] rounded-full px-6 py-3 flex justify-between items-center border border-white/5 transition-all duration-300">
+    <div className={`fixed top-4 md:top-6 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] md:w-[calc(100%-3rem)] max-w-5xl z-50`}>
+      <nav className="bg-[#00020A] shadow-[0_20px_40px_rgba(0,0,0,0.8)] rounded-full px-4 md:px-6 py-3 flex justify-between items-center border border-white/5 transition-all duration-300">
         
         {/* Left side: Logo and Links */}
         <div className="flex items-center gap-12 pointer-events-auto">

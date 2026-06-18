@@ -56,10 +56,10 @@ export default function MessagesIndex() {
   const compressionRatio = parseFloat(((1 - optimizedSize / originalSize) * 100).toFixed(1));
 
   return (
-    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-white via-slate-50/60 to-blue-50/40 p-6 md:p-10 select-none font-sans relative overflow-hidden">
+    <div className="min-h-screen w-full flex flex-col md:flex-row items-center justify-center pt-[100px] pb-10 px-4 sm:px-6 md:px-10 bg-gradient-to-b from-[#0d0d10] via-[#131318] to-[#0d0d10] select-none font-sans relative overflow-x-hidden">
       
       {/* Premium Technical Grid Mask */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:3rem_3rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-40 pointer-events-none"></div>
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:3rem_3rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-40 pointer-events-none"></div>
 
       {/* Decorative ambient glowing blur blobs */}
       <div className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-blue-400/5 rounded-full blur-3xl pointer-events-none"></div>
@@ -92,10 +92,10 @@ export default function MessagesIndex() {
 
           {/* Core Headlines */}
           <div>
-            <h1 className="text-[28px] md:text-[32px] font-black text-slate-900 tracking-tight leading-tight mb-3">
+            <h1 className="text-[28px] md:text-[32px] font-black text-white tracking-tight leading-tight mb-3">
               Sélectionnez une discussion pour commencer
             </h1>
-            <p className="text-[14px] text-slate-500 leading-relaxed max-w-lg">
+            <p className="text-[14px] text-slate-400 leading-relaxed max-w-lg">
               Choisissez un créateur ou un client dans la barre latérale pour initier un échange sécurisé, réviser des livrables 3D et gérer vos contrats.
             </p>
           </div>
@@ -104,44 +104,44 @@ export default function MessagesIndex() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
             
             {/* Card 1 */}
-            <div className="p-4 bg-white/80 border border-slate-100/80 rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.015)] hover:border-slate-200 hover:bg-white hover:shadow-[0_8px_30px_rgb(0,0,0,0.03)] transition-all duration-300 group">
-              <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center border border-blue-100/30 mb-3 group-hover:scale-105 transition-transform">
-                <span className="material-symbols-outlined text-blue-600 text-[18px] font-bold">verified_user</span>
+            <div className="p-4 bg-[#141419]/40 border border-white/5 rounded-xl shadow-lg hover:border-white/10 hover:bg-white/5 transition-all duration-300 group">
+              <div className="w-8 h-8 bg-blue-500/10 rounded-lg flex items-center justify-center border border-blue-500/20 mb-3 group-hover:scale-105 transition-transform">
+                <span className="material-symbols-outlined text-blue-400 text-[18px] font-bold">verified_user</span>
               </div>
-              <h4 className="text-[13px] font-bold text-slate-800">Messagerie Sécurisée</h4>
+              <h4 className="text-[13px] font-bold text-white">Messagerie Sécurisée</h4>
               <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
                 Chiffrement et intégrité absolue pour vos échanges de projets.
               </p>
             </div>
 
             {/* Card 2 */}
-            <div className="p-4 bg-white/80 border border-slate-100/80 rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.015)] hover:border-slate-200 hover:bg-white hover:shadow-[0_8px_30px_rgb(0,0,0,0.03)] transition-all duration-300 group">
-              <div className="w-8 h-8 bg-emerald-50 rounded-lg flex items-center justify-center border border-emerald-100/30 mb-3 group-hover:scale-105 transition-transform">
-                <span className="material-symbols-outlined text-emerald-600 text-[18px] font-bold">view_in_ar</span>
+            <div className="p-4 bg-[#141419]/40 border border-white/5 rounded-xl shadow-lg hover:border-white/10 hover:bg-white/5 transition-all duration-300 group">
+              <div className="w-8 h-8 bg-emerald-500/10 rounded-lg flex items-center justify-center border border-emerald-500/20 mb-3 group-hover:scale-105 transition-transform">
+                <span className="material-symbols-outlined text-emerald-400 text-[18px] font-bold">view_in_ar</span>
               </div>
-              <h4 className="text-[13px] font-bold text-slate-800">Partage 3D Intégré</h4>
+              <h4 className="text-[13px] font-bold text-white">Partage 3D Intégré</h4>
               <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
                 Visualisez et révisez les fichiers STL, OBJ et GLB reçus.
               </p>
             </div>
 
             {/* Card 3 */}
-            <div className="p-4 bg-white/80 border border-slate-100/80 rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.015)] hover:border-slate-200 hover:bg-white hover:shadow-[0_8px_30px_rgb(0,0,0,0.03)] transition-all duration-300 group">
-              <div className="w-8 h-8 bg-purple-50 rounded-lg flex items-center justify-center border border-purple-100/30 mb-3 group-hover:scale-105 transition-transform">
-                <span className="material-symbols-outlined text-purple-600 text-[18px] font-bold">bolt</span>
+            <div className="p-4 bg-[#141419]/40 border border-white/5 rounded-xl shadow-lg hover:border-white/10 hover:bg-white/5 transition-all duration-300 group">
+              <div className="w-8 h-8 bg-purple-500/10 rounded-lg flex items-center justify-center border border-purple-500/20 mb-3 group-hover:scale-105 transition-transform">
+                <span className="material-symbols-outlined text-purple-400 text-[18px] font-bold">bolt</span>
               </div>
-              <h4 className="text-[13px] font-bold text-slate-800">Liquid-Fast Rendering</h4>
+              <h4 className="text-[13px] font-bold text-white">Liquid-Fast Rendering</h4>
               <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
                 Optimisez la taille et la fluidité de vos livrables 3D.
               </p>
             </div>
 
             {/* Card 4 */}
-            <div className="p-4 bg-white/80 border border-slate-100/80 rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.015)] hover:border-slate-200 hover:bg-white hover:shadow-[0_8px_30px_rgb(0,0,0,0.03)] transition-all duration-300 group">
-              <div className="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center border border-amber-100/30 mb-3 group-hover:scale-105 transition-transform">
-                <span className="material-symbols-outlined text-amber-600 text-[18px] font-bold">payments</span>
+            <div className="p-4 bg-[#141419]/40 border border-white/5 rounded-xl shadow-lg hover:border-white/10 hover:bg-white/5 transition-all duration-300 group">
+              <div className="w-8 h-8 bg-amber-500/10 rounded-lg flex items-center justify-center border border-amber-500/20 mb-3 group-hover:scale-105 transition-transform">
+                <span className="material-symbols-outlined text-amber-400 text-[18px] font-bold">payments</span>
               </div>
-              <h4 className="text-[13px] font-bold text-slate-800">Devis & Contrats</h4>
+              <h4 className="text-[13px] font-bold text-white">Devis & Contrats</h4>
               <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
                 Envoyez des propositions financières reliées à vos livrables.
               </p>
@@ -154,11 +154,11 @@ export default function MessagesIndex() {
         {/* Right Column: Interactive 3D Simulator widget */}
         <div className="lg:col-span-5 w-full flex justify-center">
           
-          <div className="w-full max-w-sm bg-white border border-slate-250/60 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden relative">
+          <div className="w-full max-w-sm bg-[#0a0a0f] border border-white/10 rounded-2xl shadow-2xl overflow-hidden relative">
             {/* Header top bar */}
-            <div className="px-4 py-3 bg-slate-50 border-b border-slate-200/60 flex items-center justify-between">
+            <div className="px-4 py-3 bg-white/5 border-b border-white/5 flex items-center justify-between">
               <div className="flex items-center gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-red-400"></div>
+                <div className="w-2.5 h-2.5 rounded-full bg-error"></div>
                 <div className="w-2.5 h-2.5 rounded-full bg-amber-400"></div>
                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-400"></div>
               </div>
@@ -216,21 +216,21 @@ export default function MessagesIndex() {
                 {/* File name */}
                 <div className="flex justify-between items-center text-[12px]">
                   <span className="text-slate-400 font-medium">Fichier d&apos;essai</span>
-                  <span className="text-slate-700 font-bold font-mono">engine_manifold_v2.obj</span>
+                  <span className="text-white font-bold font-mono">engine_manifold_v2.obj</span>
                 </div>
 
                 {/* Original vs Optimized Size */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-slate-50 border border-slate-100 p-2 rounded-lg text-left">
+                  <div className="bg-white/5 border border-white/10 p-2 rounded-lg text-left">
                     <span className="block text-[10px] text-slate-400 uppercase font-semibold">Taille Initiale</span>
-                    <span className="text-[14px] font-black text-slate-700 font-mono">{originalSize} MB</span>
+                    <span className="text-[14px] font-black text-white font-mono">{originalSize} MB</span>
                   </div>
                   <div className={`border p-2 rounded-lg text-left transition-colors duration-300 ${
-                    status === 'done' ? 'bg-emerald-50/50 border-emerald-100' : 'bg-slate-50 border-slate-100'
+                    status === 'done' ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-white/5 border-white/10'
                   }`}>
                     <span className="block text-[10px] text-slate-400 uppercase font-semibold">Taille Optimisée</span>
                     <span className={`text-[14px] font-black font-mono transition-colors ${
-                      status === 'done' ? 'text-emerald-600' : 'text-slate-700'
+                      status === 'done' ? 'text-emerald-400' : 'text-white'
                     }`}>{optimizedSize} MB</span>
                   </div>
                 </div>
@@ -256,10 +256,10 @@ export default function MessagesIndex() {
               </div>
 
               {/* Progress and status line */}
-              <div className="w-full flex items-center justify-between text-[11px] font-medium border-t border-slate-100 pt-3.5 mb-4">
+              <div className="w-full flex items-center justify-between text-[11px] font-medium border-t border-white/10 pt-3.5 mb-4">
                 <span className="text-slate-400">Statut du moteur</span>
                 <span className={`font-mono font-bold ${
-                  status === 'running' ? 'text-blue-600' : status === 'done' ? 'text-emerald-600' : 'text-slate-500'
+                  status === 'running' ? 'text-blue-400' : status === 'done' ? 'text-emerald-400' : 'text-slate-500'
                 }`}>
                   {currentStage}
                 </span>
@@ -271,10 +271,10 @@ export default function MessagesIndex() {
                 disabled={status === 'running'}
                 className={`w-full py-2.5 px-4 rounded-xl text-[13px] font-bold transition-all duration-300 flex items-center justify-center gap-2 shadow-sm cursor-pointer ${
                   status === 'running' 
-                    ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+                    ? 'bg-white/5 text-slate-400 border border-white/10 cursor-not-allowed'
                     : status === 'done'
-                    ? 'bg-emerald-600 text-white hover:bg-emerald-700 hover:shadow-[0_4px_12px_rgba(16,185,129,0.2)]'
-                    : 'bg-slate-900 text-white hover:bg-slate-800 hover:shadow-[0_4px_12px_rgba(15,23,42,0.15)]'
+                    ? 'bg-emerald-500 text-black hover:bg-emerald-400 shadow-lg shadow-emerald-500/20'
+                    : 'bg-white text-black hover:bg-slate-200'
                 }`}
               >
                 <span className="material-symbols-outlined text-[16px] animate-none">
