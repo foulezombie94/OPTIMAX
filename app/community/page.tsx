@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense, useMemo, useRef } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
 import { ThreeViewer } from '@/components/OptimizationsGrid';
@@ -46,8 +46,15 @@ function CommunityContent() {
   const [visibleLimit, setVisibleLimit] = useState(9);
   
   const searchParams = useSearchParams();
-  const router = useRouter();
   const [supabase] = useState(() => createClient());
+
+  const incrementViewCount = async (id: string) => {
+    try {
+      await supabase.rpc('increment_views', { opt_id: id });
+    } catch (err) {
+      console.error('Failed to increment views:', err);
+    }
+  };
 
   // Debounce search query
   const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
@@ -114,13 +121,7 @@ function CommunityContent() {
               setItems(prev => prev.map(x => x.id === showId ? updatedItem : x));
               
               // Increment view quietly in db
-              (async () => {
-                try {
-                  await supabase.rpc('increment_views', { opt_id: showId });
-                } catch (err) {
-                  console.error('Failed to increment views:', err);
-                }
-              })();
+              incrementViewCount(showId);
             } else {
               setSelectedItem(matchedItem);
             }
@@ -168,13 +169,7 @@ function CommunityContent() {
       setItems(prev => prev.map(x => x.id === item.id ? updatedItem : x));
       
       // Call RPC views increment in database
-      (async () => {
-        try {
-          await supabase.rpc('increment_views', { opt_id: item.id });
-        } catch (err) {
-          console.error('Failed to increment views:', err);
-        }
-      })();
+      incrementViewCount(item.id);
     } else {
       setSelectedItem(item);
     }
