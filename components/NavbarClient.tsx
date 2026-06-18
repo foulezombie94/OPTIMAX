@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useTranslation, SUPPORTED_LANGUAGES } from '@/contexts/TranslationContext';
 
@@ -51,10 +52,13 @@ export default function NavbarClient({ user, isPro, username }: NavbarClientProp
         {/* Left side: Logo and Links */}
         <div className="flex items-center gap-12 pointer-events-auto">
           <Link href="/" className="font-headline-md text-headline-md font-black flex items-center gap-2 text-on-surface hover:opacity-80 transition-opacity">
-            <img 
+            <Image 
               src="/logo.png" 
               alt="OptiMax Logo" 
+              width={60}
+              height={70}
               className="h-10 w-auto object-contain drop-shadow-lg" 
+              priority
             />
           </Link>
 

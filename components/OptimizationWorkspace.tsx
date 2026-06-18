@@ -139,7 +139,7 @@ export default function OptimizationWorkspace() {
         )}
 
         {!compressedFile && (
-          <div className="glass-panel rounded-xl flex-1 flex items-center justify-center opacity-50 min-h-[300px]">
+          <div className="glass-panel rounded-xl flex-1 flex items-center justify-center opacity-70 min-h-[300px]">
             <p className="font-label-md text-on-surface-variant">{t('En attente de fichier...')}</p>
           </div>
         )}

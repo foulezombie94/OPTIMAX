@@ -284,7 +284,7 @@ export default function CompressionDropzone({
               <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors duration-300" style={{ fontSize: '48px' }}>cloud_upload</span>
             </div>
             <div>
-              <h3 className="font-headline-md text-headline-md text-on-surface mb-2">{t('Déposez votre fichier ici')}</h3>
+              <h2 className="font-headline-md text-headline-md text-on-surface mb-2">{t('Déposez votre fichier ici')}</h2>
               <p className="font-body-md text-body-md text-on-surface-variant">{t('ou cliquez pour parcourir vos dossiers locaux')}</p>
             </div>
             <div className="flex gap-3 mt-4">
@@ -316,7 +316,7 @@ export default function CompressionDropzone({
           <div className="relative z-10 flex flex-col items-center gap-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
             <span className="material-symbols-outlined text-tertiary" style={{ fontSize: '48px' }}>check_circle</span>
             <div className="text-center">
-              <h3 className="font-headline-md text-on-surface mb-1">Optimisation réussie</h3>
+              <h2 className="font-headline-md text-on-surface mb-1">Optimisation réussie</h2>
               <p className="font-body-md text-on-surface-variant">
                 Réduit de {(originalFile!.size / 1024 / 1024).toFixed(2)} Mo à {(compressedFile!.size / 1024 / 1024).toFixed(2)} Mo
               </p>
