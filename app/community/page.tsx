@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
@@ -38,10 +38,21 @@ function CommunityContent() {
   
   const searchParams = useSearchParams();
   const router = useRouter();
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
+
+  // Debounce search query
+  const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
 
   // Load initial data and liked/viewed items list
   useEffect(() => {
+    let isMounted = true;
+    
     async function fetchShowcase() {
       try {
         const { data, error } = await supabase
@@ -60,6 +71,7 @@ function CommunityContent() {
           );
         });
 
+        if (!isMounted) return;
         setItems(public3DOnly);
         
         // Auto-open if query param exists
@@ -113,7 +125,12 @@ function CommunityContent() {
     } catch (e) {
       console.error('Failed to load storage details from localStorage', e);
     }
-  }, [searchParams]);
+    
+    return () => {
+      isMounted = false;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Handle opening details modal (increments view count at most once per device)
   const handleOpenItem = (item: PublicOptimization) => {
@@ -147,14 +164,14 @@ function CommunityContent() {
       setSelectedItem(item);
     }
     
-    // Update URL query parameter
-    router.replace(`/community?show=${item.id}`);
+    // Update URL query parameter without re-rendering Next.js route
+    window.history.replaceState(null, '', `/community?show=${item.id}`);
   };
 
   // Handle closing modal
   const handleCloseModal = () => {
     setSelectedItem(null);
-    router.replace('/community');
+    window.history.replaceState(null, '', '/community');
   };
 
   // Handle Liking / Unliking an item
@@ -224,28 +241,29 @@ function CommunityContent() {
   };
 
   // Filter & Sort Items
-  const filteredItems = items
-    .filter(item => {
-      // Security: Strip potential HTML/Script tags to mitigate XSS vector in searching
-      const cleanQuery = searchQuery.replace(/<[^>]*>/g, '').trim().toLowerCase();
-      
-      const matchesSearch = (
-        item.file_name.toLowerCase().includes(cleanQuery) ||
-        item.creator_name?.toLowerCase().includes(cleanQuery)
-      );
-      
-      return matchesSearch;
-    })
-    .sort((a, b) => {
-      if (sortBy === 'likes') return (b.likes || 0) - (a.likes || 0);
-      if (sortBy === 'views') return (b.views || 0) - (a.views || 0);
-      if (sortBy === 'newest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      
-      // Default: Popularity (Likes * 10 + Shares * 5 + Views)
-      const scoreA = (a.likes || 0) * 10 + (a.shares || 0) * 5 + (a.views || 0);
-      const scoreB = (b.likes || 0) * 10 + (b.shares || 0) * 5 + (b.views || 0);
-      return scoreB - scoreA;
-    });
+  const filteredItems = useMemo(() => {
+    return items
+      .filter(item => {
+        const cleanQuery = debouncedQuery.trim().toLowerCase();
+        
+        const matchesSearch = (
+          item.file_name.toLowerCase().includes(cleanQuery) ||
+          item.creator_name?.toLowerCase().includes(cleanQuery)
+        );
+        
+        return matchesSearch;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'likes') return (b.likes || 0) - (a.likes || 0);
+        if (sortBy === 'views') return (b.views || 0) - (a.views || 0);
+        if (sortBy === 'newest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        
+        // Default: Popularity (Likes * 10 + Shares * 5 + Views)
+        const scoreA = (a.likes || 0) * 10 + (a.shares || 0) * 5 + (a.views || 0);
+        const scoreB = (b.likes || 0) * 10 + (b.shares || 0) * 5 + (b.views || 0);
+        return scoreB - scoreA;
+      });
+  }, [items, debouncedQuery, sortBy]);
 
   const formatBytes = (bytes: number) => {
     if (bytes <= 0) return '0 B';
@@ -374,11 +392,20 @@ function CommunityContent() {
                 const fileTypeLabel = item.file_type.split('/')[1]?.toUpperCase() || '3D';
 
                 return (
-                  <div 
+                  <article 
                     key={item.id}
-                    onClick={() => handleOpenItem(item)}
-                    className={`glass-panel rounded-3xl overflow-hidden group cursor-pointer transition-all duration-500 hover:-translate-y-2 bg-[#141419]/40 flex flex-col justify-between border border-white/5 ${themeColor}`}
+                    className={`relative glass-panel rounded-3xl overflow-hidden group transition-all duration-500 hover:-translate-y-2 bg-[#141419]/40 flex flex-col justify-between border border-white/5 ${themeColor}`}
                   >
+                    <Link 
+                      href={`/community?show=${item.id}`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleOpenItem(item);
+                      }}
+                      shallow
+                      className="absolute inset-0 z-10"
+                      aria-label={`Voir le modèle 3D: ${item.file_name}`}
+                    />
                     {/* Model Thumbnail container */}
                     <div className="relative w-full h-60 bg-gradient-to-tr flex flex-col items-center justify-center overflow-hidden border-b border-white/5">
                       {/* Pulse glow overlay */}
@@ -419,7 +446,7 @@ function CommunityContent() {
                           {item.file_name}
                         </h3>
                         <p className="text-body-sm text-on-surface-variant flex items-center gap-1.5">
-                          par <Link href={`/u/${item.creator_name || item.user_id}`} onClick={(e) => e.stopPropagation()} className="text-on-surface font-semibold hover:text-emerald-300 transition-colors">@{item.creator_name || 'créateur'}</Link>
+                          par <Link href={`/u/${item.creator_name || item.user_id}`} onClick={(e) => e.stopPropagation()} className="relative z-20 text-on-surface font-semibold hover:text-emerald-300 transition-colors">@{item.creator_name || 'créateur'}</Link>
                           {item.creator_is_pro && (
                             <span className="bg-tertiary/20 text-tertiary border border-tertiary/30 px-1.5 py-0.5 rounded-md text-[9px] font-bold tracking-wider uppercase select-none">
                               PRO
@@ -448,14 +475,14 @@ function CommunityContent() {
                         <div className="flex gap-2">
                           <button
                             onClick={(e) => handleLikeItem(e, item)}
-                            className={`p-2.5 rounded-xl border transition-all flex items-center justify-center active:scale-90 ${isLiked ? 'bg-error/10 border-error/30 text-error shadow-[0_0_15px_rgba(255,100,100,0.1)]' : 'glass-panel text-on-surface-variant hover:text-error hover:bg-error/5 hover:border-error/20'}`}
+                            className={`relative z-20 p-2.5 rounded-xl border transition-all flex items-center justify-center active:scale-90 ${isLiked ? 'bg-error/10 border-error/30 text-error shadow-[0_0_15px_rgba(255,100,100,0.1)]' : 'glass-panel text-on-surface-variant hover:text-error hover:bg-error/5 hover:border-error/20'}`}
                             title={isLiked ? 'Déjà aimé' : 'Aimer la création'}
                           >
                             <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: isLiked ? "'FILL' 1" : "'FILL' 0" }}>favorite</span>
                           </button>
                           <button
                             onClick={(e) => handleShareItem(e, item)}
-                            className="p-2.5 rounded-xl border glass-panel text-on-surface-variant hover:text-emerald-400 hover:bg-emerald-500/5 hover:border-emerald-500/20 transition-all flex items-center justify-center active:scale-90"
+                            className="relative z-20 p-2.5 rounded-xl border glass-panel text-on-surface-variant hover:text-emerald-400 hover:bg-emerald-500/5 hover:border-emerald-500/20 transition-all flex items-center justify-center active:scale-90"
                             title="Partager la création"
                           >
                             <span className="material-symbols-outlined text-[18px]">share</span>
@@ -463,7 +490,7 @@ function CommunityContent() {
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </article>
                 );
               })}
             </div>
