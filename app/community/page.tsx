@@ -32,6 +32,7 @@ function CommunityContent() {
   const [likedItems, setLikedItems] = useState<string[]>([]);
   const [viewedItems, setViewedItems] = useState<string[]>([]);
   const [toastMessage, setToastMessage] = useState('');
+  const [isClosing, setIsClosing] = useState(false);
   
   // Pagination limit state
   const [visibleLimit, setVisibleLimit] = useState(9);
@@ -52,6 +53,18 @@ function CommunityContent() {
   // Load initial data and liked/viewed items list
   useEffect(() => {
     let isMounted = true;
+    
+    // Fetch liked and viewed items from localStorage synchronously first
+    let savedLikes: string[] = [];
+    let savedViews: string[] = [];
+    try {
+      savedLikes = JSON.parse(localStorage.getItem('optimax_liked_items') || '[]');
+      savedViews = JSON.parse(localStorage.getItem('optimax_viewed_items') || '[]');
+      setLikedItems(savedLikes);
+      setViewedItems(savedViews);
+    } catch (e) {
+      console.error('Failed to load storage details from localStorage', e);
+    }
     
     async function fetchShowcase() {
       try {
@@ -81,8 +94,7 @@ function CommunityContent() {
           if (matchedItem) {
             setSelectedItem(matchedItem);
             
-            // Check if already viewed in this device
-            const savedViews = JSON.parse(localStorage.getItem('optimax_viewed_items') || '[]');
+            // Check if already viewed in this device using the synchronous array
             if (!savedViews.includes(showId)) {
               savedViews.push(showId);
               localStorage.setItem('optimax_viewed_items', JSON.stringify(savedViews));
@@ -114,17 +126,6 @@ function CommunityContent() {
     }
 
     fetchShowcase();
-
-    // Fetch liked and viewed items from localStorage
-    try {
-      const savedLikes = JSON.parse(localStorage.getItem('optimax_liked_items') || '[]');
-      setLikedItems(savedLikes);
-      
-      const savedViews = JSON.parse(localStorage.getItem('optimax_viewed_items') || '[]');
-      setViewedItems(savedViews);
-    } catch (e) {
-      console.error('Failed to load storage details from localStorage', e);
-    }
     
     return () => {
       isMounted = false;
@@ -170,8 +171,12 @@ function CommunityContent() {
 
   // Handle closing modal
   const handleCloseModal = () => {
-    setSelectedItem(null);
-    window.history.replaceState(null, '', '/community');
+    setIsClosing(true);
+    setTimeout(() => {
+      setSelectedItem(null);
+      setIsClosing(false);
+      window.history.replaceState(null, '', '/community');
+    }, 250); // Wait for transition duration
   };
 
   // Handle Liking / Unliking an item
@@ -512,9 +517,9 @@ function CommunityContent() {
 
         {/* Dynamic Showcase Modal */}
         {selectedItem && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/85 backdrop-blur-md animate-fade-in" onClick={handleCloseModal}>
+          <div className={`fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/85 backdrop-blur-md transition-opacity duration-250 ease-out ${isClosing ? 'opacity-0' : 'opacity-100 animate-fade-in'}`} onClick={handleCloseModal}>
             <div 
-              className="glass-panel w-full max-w-6xl max-h-[90vh] overflow-y-auto overflow-x-hidden rounded-[32px] flex flex-col md:flex-row relative animate-scale-in bg-[#101014]/95 shadow-[0_20px_60px_rgba(0,0,0,0.6)] border border-white/10"
+              className={`glass-panel w-full max-w-6xl max-h-[90vh] overflow-y-auto overflow-x-hidden rounded-[32px] flex flex-col md:flex-row relative bg-[#101014]/95 shadow-[0_20px_60px_rgba(0,0,0,0.6)] border border-white/10 transition-all duration-250 ease-out ${isClosing ? 'scale-95 opacity-0' : 'scale-100 opacity-100 animate-scale-in'}`}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Close Button */}
