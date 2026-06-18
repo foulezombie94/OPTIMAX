@@ -280,3 +280,26 @@ body {
     mix-blend-mode: screen;
     filter: hue-rotate(200deg) saturate(150%) brightness(0.8);
 }
+
+/* Animations from Community Page */
+@keyframes float-gentle {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-6px) scale(1.03); }
+}
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.08; transform: scale(1); }
+  50% { opacity: 0.22; transform: scale(1.1); }
+}
+@keyframes bg-hue-rotation {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+.animate-float-gentle {
+  animation: float-gentle 5s ease-in-out infinite;
+}
+.animate-pulse-glow {
+  animation: pulse-glow 4s ease-in-out infinite;
+}
+.tech-card-glow:hover {
+  box-shadow: 0 0 40px rgba(78, 222, 163, 0.18);
+}

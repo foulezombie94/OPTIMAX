@@ -21,6 +21,7 @@ type PublicOptimization = {
   creator_name: string;
   creator_is_pro: boolean;
   popularity_score: number;
+  fileTypeLabel?: string;
 };
 
 function CommunityContent() {
@@ -90,14 +91,19 @@ function CommunityContent() {
         if (error) throw error;
         
         // Filter out non-3D files strictly to ensure only 3D models appear
-        const public3DOnly = (data || []).filter((item: any) => {
-          const fileType = item.file_type.toLowerCase();
-          const fileName = item.file_name.toLowerCase();
-          return (
-            fileType.startsWith('model/') ||
-            fileName.match(/\.(obj|fbx|stl|glb|gltf|ply|dae)$/i)
-          );
-        });
+        const public3DOnly = (data || [])
+          .filter((item: PublicOptimization) => {
+            const fileType = item.file_type.toLowerCase();
+            const fileName = item.file_name.toLowerCase();
+            return (
+              fileType.startsWith('model/') ||
+              fileName.match(/\.(obj|fbx|stl|glb|gltf|ply|dae)$/i)
+            );
+          })
+          .map((item: PublicOptimization) => ({
+            ...item,
+            fileTypeLabel: item.file_type.split('/')[1]?.toUpperCase() || '3D'
+          }));
 
         if (!isMounted) return;
         setItems(public3DOnly);
@@ -105,14 +111,14 @@ function CommunityContent() {
         // Auto-open if query param exists
         const showId = searchParams.get('show');
         if (showId && public3DOnly) {
-          const matchedItem = public3DOnly.find((x: any) => x.id === showId);
+          const matchedItem = public3DOnly.find((x: PublicOptimization) => x.id === showId);
           if (matchedItem) {
             setSelectedItem(matchedItem);
             
             // Check if already viewed in this device using the synchronous array
             if (!savedViews.includes(showId)) {
               savedViews.push(showId);
-              localStorage.setItem('optimax_viewed_items', JSON.stringify(savedViews));
+              if (typeof window !== 'undefined') localStorage.setItem('optimax_viewed_items', JSON.stringify(savedViews));
               setViewedItems(savedViews);
               
               // Increment views locally
@@ -157,7 +163,7 @@ function CommunityContent() {
       setViewedItems(updatedViews);
       
       try {
-        localStorage.setItem('optimax_viewed_items', JSON.stringify(updatedViews));
+        if (typeof window !== 'undefined') localStorage.setItem('optimax_viewed_items', JSON.stringify(updatedViews));
       } catch (e) {
         console.error('Failed to save viewed items to localStorage', e);
       }
@@ -175,7 +181,7 @@ function CommunityContent() {
     }
     
     // Update URL query parameter without re-rendering Next.js route
-    window.history.replaceState(null, '', `/community?show=${item.id}`);
+    if (typeof window !== 'undefined') window.history.replaceState(null, '', `/community?show=${item.id}`);
   };
 
   // Handle closing modal
@@ -184,7 +190,7 @@ function CommunityContent() {
     closeTimerRef.current = setTimeout(() => {
       setSelectedItem(null);
       setIsClosing(false);
-      window.history.replaceState(null, '', '/community');
+      if (typeof window !== 'undefined') window.history.replaceState(null, '', '/community');
     }, 250); // Wait for transition duration
   };
 
@@ -193,12 +199,15 @@ function CommunityContent() {
     e.stopPropagation();
     
     const isAlreadyLiked = likedItems.includes(item.id);
+    const previousItems = [...items];
+    const previousSelectedItem = selectedItem;
+    const previousLikedItems = [...likedItems];
     
     if (isAlreadyLiked) {
       // UNLIKE
       const updatedLikes = likedItems.filter(id => id !== item.id);
       setLikedItems(updatedLikes);
-      localStorage.setItem('optimax_liked_items', JSON.stringify(updatedLikes));
+      if (typeof window !== 'undefined') localStorage.setItem('optimax_liked_items', JSON.stringify(updatedLikes));
 
       // Optimistic UI updates (decrement likes, minimum 0)
       setItems(prev => prev.map(x => x.id === item.id ? { ...x, likes: Math.max(0, (x.likes || 0) - 1) } : x));
@@ -210,12 +219,15 @@ function CommunityContent() {
         await supabase.rpc('decrement_likes', { opt_id: item.id });
       } catch (err) {
         console.error('Failed to unlike item:', err);
+        setItems(previousItems);
+        setSelectedItem(previousSelectedItem);
+        setLikedItems(previousLikedItems);
       }
     } else {
       // LIKE
       const updatedLikes = [...likedItems, item.id];
       setLikedItems(updatedLikes);
-      localStorage.setItem('optimax_liked_items', JSON.stringify(updatedLikes));
+      if (typeof window !== 'undefined') localStorage.setItem('optimax_liked_items', JSON.stringify(updatedLikes));
 
       // Optimistic UI updates
       setItems(prev => prev.map(x => x.id === item.id ? { ...x, likes: (x.likes || 0) + 1 } : x));
@@ -227,6 +239,9 @@ function CommunityContent() {
         await supabase.rpc('increment_likes', { opt_id: item.id });
       } catch (err) {
         console.error('Failed to like item:', err);
+        setItems(previousItems);
+        setSelectedItem(previousSelectedItem);
+        setLikedItems(previousLikedItems);
       }
     }
   };
@@ -235,7 +250,11 @@ function CommunityContent() {
   const handleShareItem = async (e: React.MouseEvent, item: PublicOptimization) => {
     e.stopPropagation();
     
+    if (typeof window === 'undefined') return;
     const shareUrl = `${window.location.origin}/community?show=${item.id}`;
+    
+    const previousItems = [...items];
+    const previousSelectedItem = selectedItem;
     
     try {
       await navigator.clipboard.writeText(shareUrl);
@@ -251,6 +270,8 @@ function CommunityContent() {
       await supabase.rpc('increment_shares', { opt_id: item.id });
     } catch (err) {
       console.error('Failed to share/copy link:', err);
+      setItems(previousItems);
+      setSelectedItem(previousSelectedItem);
     }
   };
 
@@ -289,31 +310,6 @@ function CommunityContent() {
 
   return (
     <main className="flex-grow pt-[110px] pb-28 px-6 md:px-12 relative w-full flex-1 z-10 bg-gradient-to-b from-[#0d0d10] via-[#131318] to-[#0d0d10]">
-      {/* Self-contained styling module for high-fidelity animations */}
-      <style dangerouslySetInnerHTML={{__html: `
-        @keyframes float-gentle {
-          0%, 100% { transform: translateY(0) scale(1); }
-          50% { transform: translateY(-6px) scale(1.03); }
-        }
-        @keyframes pulse-glow {
-          0%, 100% { opacity: 0.08; transform: scale(1); }
-          50% { opacity: 0.22; transform: scale(1.1); }
-        }
-        @keyframes bg-hue-rotation {
-          0% { filter: hue-rotate(0deg); }
-          100% { filter: hue-rotate(360deg); }
-        }
-        .animate-float-gentle {
-          animation: float-gentle 5s ease-in-out infinite;
-        }
-        .animate-pulse-glow {
-          animation: pulse-glow 4s ease-in-out infinite;
-        }
-        .tech-card-glow:hover {
-          box-shadow: 0 0 40px rgba(78, 222, 163, 0.18);
-        }
-      `}} />
-
       {/* Decorative Orbs & Mesh Gradients */}
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none"></div>
       <div className="absolute top-1/3 right-1/4 w-[450px] h-[450px] bg-tertiary/10 rounded-full blur-[150px] pointer-events-none"></div>
@@ -394,16 +390,13 @@ function CommunityContent() {
           <div className="space-y-12">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {filteredItems.slice(0, visibleLimit).map(item => {
-                const savedBytes = item.original_size - item.compressed_size;
-                const ratio = Math.round((savedBytes / item.original_size) * 100);
-                
                 const isLiked = likedItems.includes(item.id);
 
                 // Premium Emerald theme for 3D Cards
                 const themeColor = 'from-emerald-500/5 to-teal-500/5 hover:border-emerald-500/30 tech-card-glow';
                 const badgeColor = 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
                 const cardIcon = 'view_in_ar';
-                const fileTypeLabel = item.file_type.split('/')[1]?.toUpperCase() || '3D';
+                const fileTypeLabel = item.fileTypeLabel || '3D';
 
                 return (
                   <article 
