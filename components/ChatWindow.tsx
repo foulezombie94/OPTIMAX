@@ -67,6 +67,12 @@ const formatDateHeader = (dateString: string) => {
   }
 };
 
+const formatDuration = (seconds: number) => {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+};
+
 export default function ChatWindow({ 
   currentUserId, 
   partnerId, 
@@ -88,6 +94,30 @@ export default function ChatWindow({
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+  // Recording state
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const startRecording = () => {
+    setIsRecording(true);
+    setRecordingDuration(0);
+    recordingTimerRef.current = setInterval(() => {
+      setRecordingDuration(prev => prev + 1);
+    }, 1000);
+  };
+
+  const stopRecording = () => {
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    setIsRecording(false);
+    if (recordingDuration > 0) {
+      sendDirectMessage(`__AUDIO__:${recordingDuration}`);
+    } else {
+      // If duration is 0 (clicked too fast), maybe send 1 second audio
+      sendDirectMessage(`__AUDIO__:1`);
+    }
+  };
 
   const startCall = (type: 'audio' | 'video') => {
     window.dispatchEvent(new CustomEvent('start-global-call', {
@@ -318,12 +348,28 @@ export default function ChatWindow({
                                <h4 className="text-[14px] font-bold text-white truncate">{msg.content}</h4>
                              </div>
                            </div>
-                        ) : (msg.content === '__CALL_INITIATED_AUDIO__' || msg.content === '__CALL_INITIATED_VIDEO__') ? (
-                          <div className="flex items-center gap-3">
-                            <span className="material-symbols-outlined text-[20px]">
-                              {msg.content === '__CALL_INITIATED_VIDEO__' ? 'videocam' : 'call'}
-                            </span>
-                            <span className="text-[15px] font-medium">Vous avez lancé un appel</span>
+                        ) : msg.content.startsWith('__AUDIO__:') ? (
+                          <div className="flex flex-col w-full min-w-[240px]">
+                             <div className="flex items-center gap-3 mb-2">
+                               <button className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm ${isMe ? 'bg-[#f23c57]' : 'bg-[#00a6ff]'}`}>
+                                 <span className="material-symbols-outlined text-white text-[24px]" style={{fontVariationSettings: "'FILL' 1"}}>play_arrow</span>
+                               </button>
+                               <div className="flex-grow flex items-center gap-[2px] h-6">
+                                  {/* Waveform */}
+                                  {Array.from({length: 12}).map((_, i) => {
+                                    // Use index to create a pseudo-random looking but deterministic waveform
+                                    const heights = [20, 40, 70, 40, 90, 60, 30, 80, 50, 30, 60, 20];
+                                    return (
+                                      <div key={i} className={`w-1 rounded-full ${isMe ? 'bg-[#f23c57]' : 'bg-[#00a6ff]'}`} style={{height: `${heights[i]}%`}}></div>
+                                    );
+                                  })}
+                               </div>
+                               <div className="bg-white/10 px-2 py-1 rounded-md text-[11px] font-bold text-white">1x</div>
+                               <span className="text-[13px] font-mono text-[#888]">{formatDuration(parseInt(msg.content.split(':')[1], 10) || 0)}</span>
+                             </div>
+                             <div className="mt-2 text-center border-t border-[#333] pt-2">
+                               <span className="text-[12px] font-bold text-[#888] hover:text-white transition-colors cursor-pointer">Afficher la transcription</span>
+                             </div>
                           </div>
                         ) : (
                           <p className="whitespace-pre-wrap text-[15px] leading-relaxed font-medium">{msg.content}</p>
@@ -349,12 +395,27 @@ export default function ChatWindow({
                                <h4 className="text-[14px] font-bold text-white truncate">{msg.content}</h4>
                              </div>
                            </div>
-                        ) : (msg.content === '__CALL_INITIATED_AUDIO__' || msg.content === '__CALL_INITIATED_VIDEO__') ? (
-                          <div className="flex items-center gap-3">
-                            <span className="material-symbols-outlined text-[20px]">
-                              {msg.content === '__CALL_INITIATED_VIDEO__' ? 'videocam' : 'call'}
-                            </span>
-                            <span className="text-[15px] font-medium">Appel manqué</span>
+                        ) : msg.content.startsWith('__AUDIO__:') ? (
+                          <div className="flex flex-col w-full min-w-[240px]">
+                             <div className="flex items-center gap-3 mb-2">
+                               <button className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm ${isMe ? 'bg-[#f23c57]' : 'bg-[#00a6ff]'}`}>
+                                 <span className="material-symbols-outlined text-white text-[24px]" style={{fontVariationSettings: "'FILL' 1"}}>play_arrow</span>
+                               </button>
+                               <div className="flex-grow flex items-center gap-[2px] h-6">
+                                  {/* Waveform */}
+                                  {Array.from({length: 12}).map((_, i) => {
+                                    const heights = [20, 40, 70, 40, 90, 60, 30, 80, 50, 30, 60, 20];
+                                    return (
+                                      <div key={i} className={`w-1 rounded-full ${isMe ? 'bg-[#f23c57]' : 'bg-[#00a6ff]'}`} style={{height: `${heights[i]}%`}}></div>
+                                    );
+                                  })}
+                               </div>
+                               <div className="bg-white/10 px-2 py-1 rounded-md text-[11px] font-bold text-white">1x</div>
+                               <span className="text-[13px] font-mono text-[#888]">{formatDuration(parseInt(msg.content.split(':')[1], 10) || 0)}</span>
+                             </div>
+                             <div className="mt-2 text-center border-t border-[#333] pt-2">
+                               <span className="text-[12px] font-bold text-[#888] hover:text-white transition-colors cursor-pointer">Afficher la transcription</span>
+                             </div>
                           </div>
                         ) : (
                           <p className="whitespace-pre-wrap text-[15px] leading-relaxed font-medium">{msg.content}</p>
@@ -411,23 +472,45 @@ export default function ChatWindow({
 
         {/* Input Pill */}
         <form onSubmit={sendMessage} className="flex-grow flex items-center bg-transparent border border-[#444] rounded-full px-4 py-1.5 min-h-[42px] focus-within:border-[#666] transition-colors relative">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage(e);
-              }
-            }}
-            placeholder="Chat"
-            className="w-full bg-transparent border-none outline-none resize-none text-white placeholder:text-[#666] text-[17px] min-h-[24px] pt-1 pb-0 scrollbar-none font-medium"
-            rows={1}
-            maxLength={1000}
-          />
+          {isRecording ? (
+            <div className="w-full flex items-center justify-between px-2 text-[#f23c57] font-medium h-[24px] pt-1">
+              <span className="animate-pulse">Enregistrement...</span>
+              <span className="font-mono">{formatDuration(recordingDuration)}</span>
+            </div>
+          ) : (
+            <textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  sendMessage(e);
+                }
+              }}
+              placeholder="Chat"
+              className="w-full bg-transparent border-none outline-none resize-none text-white placeholder:text-[#666] text-[17px] min-h-[24px] pt-1 pb-0 scrollbar-none font-medium"
+              rows={1}
+              maxLength={1000}
+            />
+          )}
+
           {input.length === 0 ? (
-            <button type="button" className="shrink-0 text-[#ccc] hover:text-white transition-colors cursor-pointer pl-2">
-              <span className="material-symbols-outlined text-[26px]">mic</span>
+            <button 
+              type="button" 
+              onMouseDown={startRecording}
+              onMouseUp={stopRecording}
+              onMouseLeave={() => { if(isRecording) stopRecording(); }}
+              onTouchStart={startRecording}
+              onTouchEnd={stopRecording}
+              className={`shrink-0 transition-colors cursor-pointer pl-2 ${isRecording ? 'text-[#f23c57]' : 'text-[#ccc] hover:text-white'}`}
+            >
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" className={isRecording ? 'animate-pulse' : ''}>
+                <rect x="2" y="10" width="2.5" height="4" rx="1.25" />
+                <rect x="7" y="7" width="2.5" height="10" rx="1.25" />
+                <rect x="12" y="3" width="2.5" height="18" rx="1.25" />
+                <rect x="17" y="7" width="2.5" height="10" rx="1.25" />
+                <rect x="22" y="10" width="2.5" height="4" rx="1.25" />
+              </svg>
             </button>
           ) : (
             <button type="submit" className="shrink-0 text-[#f23c57] hover:text-[#ff0050] transition-colors cursor-pointer pl-2 font-bold text-[15px]">
