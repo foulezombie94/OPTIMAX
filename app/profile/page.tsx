@@ -21,12 +21,17 @@ export default async function ProfilePage() {
 
   // Fetch profile and stats in parallel
   const [profileResult, optimizationsResult] = await Promise.all([
-    supabase.from('profiles').select('id, username, is_pro, location, website, created_at').eq('id', user.id).single(),
+    supabase.from('profiles').select('id, username, is_pro, location, website, created_at, deactivated_at').eq('id', user.id).single(),
     supabase.from('optimizations').select('id, file_name, original_size, compressed_size, file_type, created_at, preview_url, is_public, views, likes, shares').eq('user_id', user.id).order('created_at', { ascending: false }).limit(50)
   ]);
 
   const profile = profileResult.data;
   const optimizations = optimizationsResult.data || [];
+
+  if (profile?.deactivated_at) {
+    // If the account is deactivated, force logout
+    redirect('/login?deactivated=true');
+  }
 
   const initial = (profile?.username || user.email?.split('@')[0] || 'U').charAt(0).toUpperCase();
 

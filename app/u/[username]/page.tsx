@@ -20,7 +20,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   // Try to find user by username
   let { data: profile } = await supabase
     .from('profiles')
-    .select('id, username, email, is_pro, location, website, created_at, avatar_url')
+    .select('id, username, email, is_pro, location, website, created_at, avatar_url, deactivated_at')
     .eq('username', username)
     .maybeSingle();
 
@@ -28,7 +28,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     // Fallback to checking by ID if it's a UUID
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (uuidRegex.test(username)) {
-      const res = await supabase.from('profiles').select('id, username, email, is_pro, location, website, created_at, avatar_url').eq('id', username).maybeSingle();
+      const res = await supabase.from('profiles').select('id, username, email, is_pro, location, website, created_at, avatar_url, deactivated_at').eq('id', username).maybeSingle();
       profile = res.data;
     }
   }
@@ -37,14 +37,14 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     // Fallback to checking by email prefix
     const res = await supabase
       .from('profiles')
-      .select('id, username, email, is_pro, location, website, created_at, avatar_url')
+      .select('id, username, email, is_pro, location, website, created_at, avatar_url, deactivated_at')
       .ilike('email', `${username}@%`)
       .limit(1)
       .maybeSingle();
     profile = res.data;
   }
 
-  if (!profile) {
+  if (!profile || profile.deactivated_at) {
     notFound();
   }
 
