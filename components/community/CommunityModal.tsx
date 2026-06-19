@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { ThreeViewer } from '@/components/OptimizationsGrid';
 import { PublicOptimization } from './types';
@@ -20,6 +21,26 @@ const formatBytes = (bytes: number) => {
 };
 
 export function CommunityModal({ item, isClosing, onClose, likedItems, onLike, onShare }: CommunityModalProps) {
+  useEffect(() => {
+    if (item) {
+      const header = document.getElementById('main-header');
+      if (header) {
+        header.style.transform = 'translate(-50%, -150%)'; // -50% for the left-1/2 -translate-x-1/2
+        header.style.opacity = '0';
+        header.style.pointerEvents = 'none';
+      }
+    }
+    
+    return () => {
+      const header = document.getElementById('main-header');
+      if (header) {
+        header.style.transform = '';
+        header.style.opacity = '1';
+        header.style.pointerEvents = 'auto';
+      }
+    };
+  }, [item]);
+
   if (!item) return null;
 
   return (
