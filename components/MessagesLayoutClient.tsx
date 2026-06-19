@@ -38,6 +38,57 @@ const getAvatarColor = (name: string) => {
   return colors[sum % colors.length];
 };
 
+const getRelativeSnapTime = (dateInput: string | number | undefined) => {
+  if (!dateInput) return 'À l\'instant';
+  const date = new Date(dateInput);
+  if (isNaN(date.getTime())) return 'À l\'instant';
+  
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+  
+  if (diffInSeconds < 60) return `${Math.max(1, diffInSeconds)} s`;
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) return `${diffInMinutes} min`;
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours} h`;
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays < 7) return `${diffInDays} j`;
+  const diffInWeeks = Math.floor(diffInDays / 7);
+  return `${diffInWeeks} sem`;
+};
+
+const getSnapStatus = (partnerId: string, isUnread: boolean) => {
+  if (isUnread) {
+    return {
+      text: 'Nouveau Snap',
+      textColor: 'text-[#bc2a8d] font-bold tracking-tight',
+      icon: <div className="w-[12px] h-[12px] rounded-[2px] bg-[#bc2a8d] mr-2 shrink-0"></div>
+    };
+  }
+  
+  const hash = partnerId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const type = hash % 3;
+  if (type === 0) {
+    return {
+      text: 'Ouvert',
+      textColor: 'text-[#8e8e93]',
+      icon: <span className="material-symbols-outlined text-[14px] text-[#bc2a8d] mr-1.5" style={{ fontVariationSettings: "'FILL' 0" }}>play_arrow</span>
+    };
+  } else if (type === 1) {
+    return {
+      text: 'Remis',
+      textColor: 'text-[#8e8e93]',
+      icon: <span className="material-symbols-outlined text-[14px] text-[#007aff] mr-1.5" style={{ fontVariationSettings: "'FILL' 1" }}>play_arrow</span>
+    };
+  } else {
+    return {
+      text: 'Reçu',
+      textColor: 'text-[#8e8e93]',
+      icon: <div className="w-[12px] h-[12px] rounded-[2px] border-[2px] border-[#eb5252] mr-2 shrink-0"></div>
+    };
+  }
+};
+
 export default function MessagesLayoutClient({
   dbPartners,
   children,
@@ -52,15 +103,37 @@ export default function MessagesLayoutClient({
   const currentChatId = pathname?.split('/').pop() || '';
   const isChatOpen = pathname !== '/messages' && currentChatId !== '';
 
-  const partnerList = dbPartners.map(p => ({
-    ...p,
-    avatarUrl: p.avatarUrl || undefined,
-    latestMessageSnippet: p.latestMessageSnippet || 'Click to open conversation',
-    latestMessageAt: typeof p.latestMessageAt === 'number' 
-      ? new Date(p.latestMessageAt).toLocaleDateString()
-      : p.latestMessageAt || 'Active',
-    isOnline: p.isOnline !== undefined ? p.isOnline : true,
-  }));
+  const [pinnedChats, setPinnedChats] = useState<Set<string>>(new Set());
+  const [unreadChats, setUnreadChats] = useState<Set<string>>(new Set());
+  const [hiddenChats, setHiddenChats] = useState<Set<string>>(new Set());
+
+  const [contextMenu, setContextMenu] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    partner: (Partner & { avatarUrl?: string; latestMessageSnippet: string; latestMessageAt: string; isOnline: boolean; isPinned: boolean; isUnread: boolean }) | null;
+  }>({ visible: false, x: 0, y: 0, partner: null });
+
+  const closeContextMenu = () => {
+    setContextMenu(prev => ({ ...prev, visible: false }));
+  };
+
+  const partnerList = dbPartners
+    .filter(p => !hiddenChats.has(p.id))
+    .map(p => ({
+      ...p,
+      avatarUrl: p.avatarUrl || undefined,
+      latestMessageSnippet: p.latestMessageSnippet || 'Click to open conversation',
+      latestMessageAt: getRelativeSnapTime(p.latestMessageAt),
+      isOnline: p.isOnline !== undefined ? p.isOnline : true,
+      isPinned: pinnedChats.has(p.id),
+      isUnread: unreadChats.has(p.id),
+    }))
+    .sort((a, b) => {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      return 0;
+    });
 
   const filteredPartners = partnerList.filter(p =>
     p.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -194,6 +267,15 @@ export default function MessagesLayoutClient({
                       <Link
                         key={partner.id}
                         href={`/messages/${partner.id}`}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          setContextMenu({
+                            visible: true,
+                            x: e.clientX,
+                            y: e.clientY,
+                            partner
+                          });
+                        }}
                         className={`pl-4 pr-3 py-3 flex items-center transition-all cursor-pointer border-b border-[#1a1a1c] ${
                           isSelected ? 'bg-white/5' : 'hover:bg-white/5'
                         }`}
@@ -219,9 +301,11 @@ export default function MessagesLayoutClient({
                             <div className="absolute inset-0 rounded-full border-2 border-primary animate-ping"></div>
                           )}
                           {/* Pin Icon */}
-                          <div className="absolute -bottom-1 -right-1 bg-black rounded-full p-0.5 z-10 flex items-center justify-center">
-                            <span className="material-symbols-outlined text-white text-[12px] opacity-80" style={{ transform: 'rotate(45deg)' }}>push_pin</span>
-                          </div>
+                          {partner.isPinned && (
+                            <div className="absolute -bottom-1 -right-1 bg-black rounded-full p-0.5 z-10 flex items-center justify-center">
+                              <span className="material-symbols-outlined text-white text-[12px] opacity-80" style={{ transform: 'rotate(45deg)' }}>push_pin</span>
+                            </div>
+                          )}
                         </div>
                         
                         {/* Texts */}
@@ -231,12 +315,18 @@ export default function MessagesLayoutClient({
                               {partner.displayName}
                             </h4>
                           </div>
-                          <div className="flex items-center text-[13px] text-[#8e8e93] font-medium">
-                            {/* Purple outline square */}
-                            <div className="w-[12px] h-[12px] rounded-[2px] border-[2px] border-[#bc2a8d] mr-2 shrink-0"></div>
-                            <span className="truncate max-w-[140px]">{partner.latestMessageSnippet}</span>
-                            <span className="mx-1.5">-</span>
-                            <span className="shrink-0">{partner.latestMessageAt}</span>
+                          <div className="flex items-center text-[13px] font-medium mt-[1px]">
+                            {(() => {
+                              const status = getSnapStatus(partner.id, partner.isUnread);
+                              return (
+                                <>
+                                  {status.icon}
+                                  <span className={`truncate max-w-[140px] ${status.textColor}`}>{status.text}</span>
+                                </>
+                              );
+                            })()}
+                            <span className="mx-1.5 text-[#8e8e93]">-</span>
+                            <span className="shrink-0 text-[#8e8e93]">{partner.latestMessageAt}</span>
                           </div>
                         </div>
 
@@ -271,6 +361,92 @@ export default function MessagesLayoutClient({
 
         </div>
       </div>
+
+      {/* Custom Context Menu */}
+      {contextMenu.visible && contextMenu.partner && (
+        <>
+          <div className="fixed inset-0 z-[100]" onClick={closeContextMenu} onContextMenu={(e) => { e.preventDefault(); closeContextMenu(); }}></div>
+          <div 
+            className="fixed z-[101] bg-[#1a1a1c] border border-white/10 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] py-2 w-64 overflow-hidden backdrop-blur-xl"
+            style={{ 
+              top: Math.min(contextMenu.y, typeof window !== 'undefined' ? window.innerHeight - 350 : 0), 
+              left: Math.min(contextMenu.x, typeof window !== 'undefined' ? window.innerWidth - 260 : 0) 
+            }}
+          >
+            <div className="px-4 py-3 border-b border-white/5 mb-1 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full overflow-hidden bg-black shrink-0 relative">
+                {contextMenu.partner.avatarUrl ? (
+                  <img src={contextMenu.partner.avatarUrl} alt={contextMenu.partner.displayName} className="w-full h-full object-cover" />
+                ) : (
+                  <div className={`w-full h-full bg-gradient-to-tr ${getAvatarColor(contextMenu.partner.displayName)} flex items-center justify-center font-bold text-[14px]`}>
+                    {getInitials(contextMenu.partner.displayName)}
+                  </div>
+                )}
+              </div>
+              <div className="font-bold text-white text-[15px] truncate">{contextMenu.partner.displayName}</div>
+            </div>
+            
+            <button className="w-full px-4 py-2.5 text-left flex items-center text-white hover:bg-white/5 transition-colors group" onClick={() => { closeContextMenu(); }}>
+              <span className="material-symbols-outlined text-[20px] mr-3 text-[#8e8e93] group-hover:text-white" style={{ fontVariationSettings: "'wght' 300" }}>photo_camera</span>
+              <span className="font-semibold text-[14px]">Snap</span>
+            </button>
+            <button className="w-full px-4 py-2.5 text-left flex items-center text-white hover:bg-white/5 transition-colors group" onClick={() => { closeContextMenu(); window.location.href = `/messages/${contextMenu.partner!.id}`; }}>
+              <span className="material-symbols-outlined text-[20px] mr-3 text-[#8e8e93] group-hover:text-white" style={{ fontVariationSettings: "'wght' 300" }}>chat_bubble</span>
+              <span className="font-semibold text-[14px]">Chat</span>
+            </button>
+            <button className="w-full px-4 py-2.5 text-left flex items-center text-white hover:bg-white/5 transition-colors group" onClick={() => { closeContextMenu(); alert('Appel vocal simulé'); }}>
+              <span className="material-symbols-outlined text-[20px] mr-3 text-[#8e8e93] group-hover:text-white" style={{ fontVariationSettings: "'wght' 300" }}>call</span>
+              <span className="font-semibold text-[14px]">Appel vocal</span>
+            </button>
+            <button className="w-full px-4 py-2.5 text-left flex items-center text-white hover:bg-white/5 transition-colors group" onClick={() => { closeContextMenu(); alert('Appel vidéo simulé'); }}>
+              <span className="material-symbols-outlined text-[20px] mr-3 text-[#8e8e93] group-hover:text-white" style={{ fontVariationSettings: "'wght' 300" }}>videocam</span>
+              <span className="font-semibold text-[14px]">Appel vidéo</span>
+            </button>
+
+            <div className="h-[1px] bg-white/5 my-1 mx-2"></div>
+
+            <button className="w-full px-4 py-2.5 text-left flex items-center text-white hover:bg-white/5 transition-colors group" onClick={() => {
+              setPinnedChats(prev => {
+                const next = new Set(prev);
+                if (next.has(contextMenu.partner!.id)) next.delete(contextMenu.partner!.id);
+                else next.add(contextMenu.partner!.id);
+                return next;
+              });
+              closeContextMenu();
+            }}>
+              <span className="material-symbols-outlined text-[20px] mr-3 text-[#8e8e93] group-hover:text-white" style={{ transform: 'rotate(45deg)', fontVariationSettings: "'wght' 300" }}>push_pin</span>
+              <span className="font-semibold text-[14px]">{contextMenu.partner.isPinned ? 'Désépingler' : 'Épingler la conversation'}</span>
+            </button>
+
+            <button className="w-full px-4 py-2.5 text-left flex items-center text-white hover:bg-white/5 transition-colors group" onClick={() => {
+              setUnreadChats(prev => {
+                const next = new Set(prev);
+                if (next.has(contextMenu.partner!.id)) next.delete(contextMenu.partner!.id);
+                else next.add(contextMenu.partner!.id);
+                return next;
+              });
+              closeContextMenu();
+            }}>
+              <span className="material-symbols-outlined text-[20px] mr-3 text-[#8e8e93] group-hover:text-white" style={{ fontVariationSettings: "'wght' 300" }}>mark_chat_unread</span>
+              <span className="font-semibold text-[14px]">{contextMenu.partner.isUnread ? 'Marquer comme lu' : 'Marquer comme non lu'}</span>
+            </button>
+
+            <div className="h-[1px] bg-white/5 my-1 mx-2"></div>
+
+            <button className="w-full px-4 py-2.5 text-left flex items-center text-[#ff3b30] hover:bg-[#ff3b30]/10 transition-colors group" onClick={() => {
+              setHiddenChats(prev => {
+                const next = new Set(prev);
+                next.add(contextMenu.partner!.id);
+                return next;
+              });
+              closeContextMenu();
+            }}>
+              <span className="material-symbols-outlined text-[20px] mr-3" style={{ fontVariationSettings: "'wght' 300" }}>delete</span>
+              <span className="font-semibold text-[14px]">Effacer de la liste</span>
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
