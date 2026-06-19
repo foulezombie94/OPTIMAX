@@ -73,6 +73,103 @@ const formatDuration = (seconds: number) => {
   return `${m}:${s.toString().padStart(2, '0')}`;
 };
 
+const AudioMessageBubble = ({ content, isMe }: { content: string, isMe: boolean }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [showTranscript, setShowTranscript] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Parse __AUDIO__:duration:base64:transcript
+  // If it's old format without base64/transcript, they will be undefined
+  const parts = content.split(':');
+  const duration = parseInt(parts[1], 10) || 0;
+  // Because base64 string contains ':', we must re-join the rest or parse differently.
+  // Actually, format is __AUDIO__:duration:base64... but base64 contains data:audio/webm;base64,... which has a colon!
+  // Better split: content.match(/__AUDIO__:(\d+):([^:]+):?(.*)?/)
+  // Let's manually parse:
+  let base64Audio = '';
+  let transcript = '';
+  
+  const firstColon = content.indexOf(':', 0);
+  const secondColon = content.indexOf(':', firstColon + 1);
+  if (secondColon !== -1) {
+     // we have __AUDIO__:12:data:audio...
+     // find where transcript starts? base64 doesn't have colons after data:audio/webm;base64,
+     const commaIndex = content.indexOf(',', secondColon);
+     // Base64 regex is basically letters, numbers, +, /, =.
+     // To avoid issues, I should have formatted it as __AUDIO__|duration|base64|transcript
+     // For now, let's assume if parts length > 2, the rest is base64 and transcript.
+     // Let's use a safer parsing: 
+     // format we will save: __AUDIO__|{duration}|{base64}|{transcript}
+  }
+
+  // Let's parse assuming the new format `__AUDIO__|duration|base64|transcript`
+  // and fallback to `:` for older test messages
+  let parsedDuration = duration;
+  let parsedBase64 = '';
+  let parsedTranscript = '';
+
+  if (content.startsWith('__AUDIO__|')) {
+     const split = content.split('|');
+     parsedDuration = parseInt(split[1], 10) || 0;
+     parsedBase64 = split[2] || '';
+     parsedTranscript = split[3] || '';
+  }
+
+  const togglePlay = () => {
+     if (!parsedBase64) return; // Cannot play dummy audio
+     if (isPlaying) {
+        audioRef.current?.pause();
+     } else {
+        audioRef.current?.play();
+     }
+     setIsPlaying(!isPlaying);
+  };
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.onended = () => setIsPlaying(false);
+    }
+  }, []);
+
+  return (
+    <div className={`flex flex-col w-full min-w-[260px] p-3 rounded-2xl shadow-sm ${isMe ? 'bg-[#1c1c1e] border-l-[3px] border-[#f23c57]' : 'bg-[#1c1c1e] border-l-[3px] border-[#00a6ff]'}`}>
+      <div className="flex items-center gap-3">
+        <button onClick={togglePlay} className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 shadow-lg cursor-pointer ${isMe ? 'bg-[#f23c57] hover:bg-[#ff0050]' : 'bg-[#00a6ff] hover:bg-[#33b8ff]'} transition-colors`}>
+          <span className="material-symbols-outlined text-white text-[28px] ml-0.5" style={{fontVariationSettings: "'FILL' 1"}}>{isPlaying ? 'pause' : 'play_arrow'}</span>
+        </button>
+        <div className="flex-grow flex flex-col justify-center gap-1.5">
+           {/* Waveform */}
+           <div className="flex items-center gap-[3px] h-7">
+              {Array.from({length: 15}).map((_, i) => {
+                const heights = [30, 50, 80, 40, 100, 60, 40, 90, 70, 50, 70, 30, 50, 80, 40];
+                return (
+                  <div key={i} className={`w-[3px] rounded-full transition-all duration-300 ${isPlaying ? 'animate-pulse' : 'opacity-80'} ${isMe ? 'bg-[#f23c57]' : 'bg-[#00a6ff]'}`} style={{height: `${heights[i]}%`}}></div>
+                );
+              })}
+           </div>
+           <div className="flex justify-between items-center px-1">
+             <span className="text-[12px] font-mono text-white/60">{formatDuration(parsedDuration)}</span>
+             <div className="bg-white/10 px-1.5 py-0.5 rounded text-[9px] font-bold text-white/80 tracking-widest">1X</div>
+           </div>
+        </div>
+      </div>
+      <div className="mt-3 text-center border-t border-white/5 pt-2">
+        <button onClick={() => setShowTranscript(!showTranscript)} className="text-[12px] font-bold text-[#888] hover:text-white transition-colors cursor-pointer select-none">
+          {showTranscript ? "Masquer la transcription" : "Afficher la transcription"}
+        </button>
+        {showTranscript && (
+          <div className="mt-2 p-2 bg-black/40 rounded-lg text-left">
+             <p className="text-[13px] text-white/90 italic font-medium leading-relaxed">
+               {parsedTranscript ? `"${parsedTranscript}"` : "Aucune transcription disponible."}
+             </p>
+          </div>
+        )}
+      </div>
+      {parsedBase64 && <audio ref={audioRef} src={parsedBase64} className="hidden" />}
+    </div>
+  );
+};
+
 export default function ChatWindow({ 
   currentUserId, 
   partnerId, 
@@ -98,25 +195,101 @@ export default function ChatWindow({
   // Recording state
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
+  const [transcript, setTranscript] = useState("");
+  
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recognitionRef = useRef<any>(null);
+  const recordingDurationRef = useRef(0);
+  const transcriptRef = useRef("");
 
-  const startRecording = () => {
-    setIsRecording(true);
-    setRecordingDuration(0);
-    recordingTimerRef.current = setInterval(() => {
-      setRecordingDuration(prev => prev + 1);
-    }, 1000);
+  const toggleRecording = async () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+        reader.onloadend = () => {
+          const base64Audio = reader.result as string;
+          const currentTranscript = transcriptRef.current;
+          const duration = recordingDurationRef.current;
+          if (duration > 0) {
+             sendDirectMessage(`__AUDIO__|${duration}|${base64Audio}|${currentTranscript}`);
+          }
+        };
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingDuration(0);
+      recordingDurationRef.current = 0;
+      setTranscript("");
+      transcriptRef.current = "";
+
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration(prev => {
+           recordingDurationRef.current = prev + 1;
+           return prev + 1;
+        });
+      }, 1000);
+
+      // Start Transcription
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'fr-FR';
+        recognition.interimResults = true;
+        recognition.continuous = true;
+
+        recognition.onresult = (event: any) => {
+          let currentTrans = '';
+          for (let i = 0; i < event.results.length; i++) {
+            currentTrans += event.results[i][0].transcript;
+          }
+          setTranscript(currentTrans);
+          transcriptRef.current = currentTrans;
+        };
+
+        recognition.start();
+        recognitionRef.current = recognition;
+      }
+    } catch (err) {
+      console.error("Microphone access denied or error:", err);
+      alert("Impossible d'accéder au microphone.");
+      setIsRecording(false);
+    }
   };
 
   const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+    }
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
     if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
     setIsRecording(false);
-    if (recordingDuration > 0) {
-      sendDirectMessage(`__AUDIO__:${recordingDuration}`);
-    } else {
-      // If duration is 0 (clicked too fast), maybe send 1 second audio
-      sendDirectMessage(`__AUDIO__:1`);
-    }
   };
 
   const startCall = (type: 'audio' | 'video') => {
@@ -348,29 +521,8 @@ export default function ChatWindow({
                                <h4 className="text-[14px] font-bold text-white truncate">{msg.content}</h4>
                              </div>
                            </div>
-                        ) : msg.content.startsWith('__AUDIO__:') ? (
-                          <div className="flex flex-col w-full min-w-[240px]">
-                             <div className="flex items-center gap-3 mb-2">
-                               <button className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm ${isMe ? 'bg-[#f23c57]' : 'bg-[#00a6ff]'}`}>
-                                 <span className="material-symbols-outlined text-white text-[24px]" style={{fontVariationSettings: "'FILL' 1"}}>play_arrow</span>
-                               </button>
-                               <div className="flex-grow flex items-center gap-[2px] h-6">
-                                  {/* Waveform */}
-                                  {Array.from({length: 12}).map((_, i) => {
-                                    // Use index to create a pseudo-random looking but deterministic waveform
-                                    const heights = [20, 40, 70, 40, 90, 60, 30, 80, 50, 30, 60, 20];
-                                    return (
-                                      <div key={i} className={`w-1 rounded-full ${isMe ? 'bg-[#f23c57]' : 'bg-[#00a6ff]'}`} style={{height: `${heights[i]}%`}}></div>
-                                    );
-                                  })}
-                               </div>
-                               <div className="bg-white/10 px-2 py-1 rounded-md text-[11px] font-bold text-white">1x</div>
-                               <span className="text-[13px] font-mono text-[#888]">{formatDuration(parseInt(msg.content.split(':')[1], 10) || 0)}</span>
-                             </div>
-                             <div className="mt-2 text-center border-t border-[#333] pt-2">
-                               <span className="text-[12px] font-bold text-[#888] hover:text-white transition-colors cursor-pointer">Afficher la transcription</span>
-                             </div>
-                          </div>
+                        ) : msg.content.startsWith('__AUDIO__') ? (
+                          <AudioMessageBubble content={msg.content} isMe={isMe} />
                         ) : (
                           <p className="whitespace-pre-wrap text-[15px] leading-relaxed font-medium">{msg.content}</p>
                         )}
@@ -395,28 +547,8 @@ export default function ChatWindow({
                                <h4 className="text-[14px] font-bold text-white truncate">{msg.content}</h4>
                              </div>
                            </div>
-                        ) : msg.content.startsWith('__AUDIO__:') ? (
-                          <div className="flex flex-col w-full min-w-[240px]">
-                             <div className="flex items-center gap-3 mb-2">
-                               <button className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm ${isMe ? 'bg-[#f23c57]' : 'bg-[#00a6ff]'}`}>
-                                 <span className="material-symbols-outlined text-white text-[24px]" style={{fontVariationSettings: "'FILL' 1"}}>play_arrow</span>
-                               </button>
-                               <div className="flex-grow flex items-center gap-[2px] h-6">
-                                  {/* Waveform */}
-                                  {Array.from({length: 12}).map((_, i) => {
-                                    const heights = [20, 40, 70, 40, 90, 60, 30, 80, 50, 30, 60, 20];
-                                    return (
-                                      <div key={i} className={`w-1 rounded-full ${isMe ? 'bg-[#f23c57]' : 'bg-[#00a6ff]'}`} style={{height: `${heights[i]}%`}}></div>
-                                    );
-                                  })}
-                               </div>
-                               <div className="bg-white/10 px-2 py-1 rounded-md text-[11px] font-bold text-white">1x</div>
-                               <span className="text-[13px] font-mono text-[#888]">{formatDuration(parseInt(msg.content.split(':')[1], 10) || 0)}</span>
-                             </div>
-                             <div className="mt-2 text-center border-t border-[#333] pt-2">
-                               <span className="text-[12px] font-bold text-[#888] hover:text-white transition-colors cursor-pointer">Afficher la transcription</span>
-                             </div>
-                          </div>
+                        ) : msg.content.startsWith('__AUDIO__') ? (
+                          <AudioMessageBubble content={msg.content} isMe={isMe} />
                         ) : (
                           <p className="whitespace-pre-wrap text-[15px] leading-relaxed font-medium">{msg.content}</p>
                         )}
@@ -473,9 +605,12 @@ export default function ChatWindow({
         {/* Input Pill */}
         <form onSubmit={sendMessage} className="flex-grow flex items-center bg-transparent border border-[#444] rounded-full px-4 py-1.5 min-h-[42px] focus-within:border-[#666] transition-colors relative">
           {isRecording ? (
-            <div className="w-full flex items-center justify-between px-2 text-[#f23c57] font-medium h-[24px] pt-1">
-              <span className="animate-pulse">Enregistrement...</span>
-              <span className="font-mono">{formatDuration(recordingDuration)}</span>
+            <div className="w-full flex items-center justify-between px-3 text-[#f23c57] font-medium h-[24px] pt-1">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-[#f23c57] rounded-full animate-pulse"></div>
+                <span className="animate-pulse text-[15px]">Enregistrement...</span>
+              </div>
+              <span className="font-mono text-[16px]">{formatDuration(recordingDuration)}</span>
             </div>
           ) : (
             <textarea
@@ -497,20 +632,22 @@ export default function ChatWindow({
           {input.length === 0 ? (
             <button 
               type="button" 
-              onMouseDown={startRecording}
-              onMouseUp={stopRecording}
-              onMouseLeave={() => { if(isRecording) stopRecording(); }}
-              onTouchStart={startRecording}
-              onTouchEnd={stopRecording}
+              onClick={toggleRecording}
               className={`shrink-0 transition-colors cursor-pointer pl-2 ${isRecording ? 'text-[#f23c57]' : 'text-[#ccc] hover:text-white'}`}
             >
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" className={isRecording ? 'animate-pulse' : ''}>
-                <rect x="2" y="10" width="2.5" height="4" rx="1.25" />
-                <rect x="7" y="7" width="2.5" height="10" rx="1.25" />
-                <rect x="12" y="3" width="2.5" height="18" rx="1.25" />
-                <rect x="17" y="7" width="2.5" height="10" rx="1.25" />
-                <rect x="22" y="10" width="2.5" height="4" rx="1.25" />
-              </svg>
+              {isRecording ? (
+                /* Stop recording icon (Square) */
+                <span className="material-symbols-outlined text-[28px] mr-1" style={{fontVariationSettings: "'FILL' 1"}}>stop_circle</span>
+              ) : (
+                /* Waveform SVG */
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
+                  <rect x="2" y="10" width="2.5" height="4" rx="1.25" />
+                  <rect x="7" y="7" width="2.5" height="10" rx="1.25" />
+                  <rect x="12" y="3" width="2.5" height="18" rx="1.25" />
+                  <rect x="17" y="7" width="2.5" height="10" rx="1.25" />
+                  <rect x="22" y="10" width="2.5" height="4" rx="1.25" />
+                </svg>
+              )}
             </button>
           ) : (
             <button type="submit" className="shrink-0 text-[#f23c57] hover:text-[#ff0050] transition-colors cursor-pointer pl-2 font-bold text-[15px]">
