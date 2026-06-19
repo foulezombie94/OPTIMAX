@@ -258,7 +258,7 @@ export default function ChatWindow({
 
                 {isMe ? (
                   /* Snapchat style "Moi" Bubble */
-                  <div className="flex flex-col w-full pl-2 pr-4">
+                  <div className="flex flex-col w-full pl-2 pr-4 mt-2">
                     <span className="text-[#f23c57] text-[13px] font-bold mb-1 ml-1 select-none tracking-wide">Moi</span>
                     <div className="flex w-full">
                       <div className="w-1.5 bg-[#f23c57] shrink-0 rounded-l-sm"></div>
@@ -287,8 +287,10 @@ export default function ChatWindow({
                   </div>
                 ) : (
                   /* Snapchat style Partner Bubble */
-                  <div className="flex flex-col w-full pl-2 pr-4 mt-1">
-                    {/* Note: Partner name usually not shown above every message in 1on1 snap, just the line */}
+                  <div className="flex flex-col w-full pl-2 pr-4 mt-3">
+                    <span className="text-[#00a6ff] text-[13px] font-bold mb-1 ml-1 select-none tracking-wide">
+                      {msg.sender_name || partnerName}
+                    </span>
                     <div className="flex w-full">
                       <div className="w-1.5 bg-[#00a6ff] shrink-0 rounded-l-sm"></div>
                       <div className="bg-[#1c1c1e] text-white px-3 py-3 rounded-r-md min-h-[44px] flex-grow relative overflow-hidden">
