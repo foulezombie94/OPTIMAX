@@ -58,7 +58,8 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     .select('id, file_name, original_size, compressed_size, file_type, created_at, preview_url, is_public, views, likes, shares')
     .eq('user_id', profile.id)
     .eq('is_public', true)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(50);
 
   const optimizations = publicOptimizations || [];
 

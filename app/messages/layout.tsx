@@ -19,19 +19,15 @@ export default async function MessagesLayout({
     redirect('/login');
   }
 
-  // Fetch all messages involving the user to determine conversations
-  const { data: msgs } = await supabase
-    .from('messages')
-    .select('id, sender_id, receiver_id, created_at, content, is_read, read_at')
-    .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-    .order('created_at', { ascending: false });
+  // Fetch only the latest message per conversation for performance
+  const { data: latestMsgs } = await supabase
+    .rpc('get_user_conversations', { uid: user.id });
 
-  // Deduplicate to find conversational partners
+  // Extract conversational partners
   const partnerIds = new Set<string>();
-  if (msgs) {
-    msgs.forEach((msg) => {
-      const partnerId = msg.sender_id === user.id ? msg.receiver_id : msg.sender_id;
-      if (partnerId) partnerIds.add(partnerId);
+  if (latestMsgs) {
+    latestMsgs.forEach((msg: any) => {
+      if (msg.partner_id) partnerIds.add(msg.partner_id);
     });
   }
 
@@ -55,7 +51,7 @@ export default async function MessagesLayout({
 
   // Format and sort partners
   const sortedPartners = partners.map(partner => {
-    const latestMsg = msgs?.find(m => m.sender_id === partner.id || m.receiver_id === partner.id);
+    const latestMsg = latestMsgs?.find((m: any) => m.partner_id === partner.id);
     
     let snippet = 'Cliquer pour ouvrir la discussion';
     if (latestMsg) {

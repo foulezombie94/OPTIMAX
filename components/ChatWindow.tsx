@@ -330,10 +330,13 @@ export default function ChatWindow({
       .from('messages')
       .select('*')
       .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${partnerId}),and(sender_id.eq.${partnerId},receiver_id.eq.${currentUserId})`)
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: false })
+      .limit(50);
 
     if (data) {
-      const formatted = data.map((msg: { id: string; sender_id: string; content: string; created_at: string }) => {
+      // Reverse so oldest is first in the chat UI
+      const reversedData = [...data].reverse();
+      const formatted = reversedData.map((msg: { id: string; sender_id: string; content: string; created_at: string }) => {
         const isPdf = msg.content.toLowerCase().endsWith('.pdf');
         return {
           id: msg.id,

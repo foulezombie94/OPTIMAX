@@ -22,7 +22,7 @@ export default async function ProfilePage() {
   // Fetch profile and stats in parallel
   const [profileResult, optimizationsResult] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).single(),
-    supabase.from('optimizations').select('id, file_name, original_size, compressed_size, file_type, created_at, preview_url, is_public, views, likes, shares').eq('user_id', user.id).order('created_at', { ascending: false })
+    supabase.from('optimizations').select('id, file_name, original_size, compressed_size, file_type, created_at, preview_url, is_public, views, likes, shares').eq('user_id', user.id).order('created_at', { ascending: false }).limit(50)
   ]);
 
   const profile = profileResult.data;

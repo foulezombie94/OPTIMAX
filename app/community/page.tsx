@@ -73,24 +73,16 @@ function CommunityContent() {
       try {
         const { data, error } = await supabase
           .from('public_optimizations_popularity')
-          .select('*');
+          .select('*')
+          .or('file_type.ilike.model/%,file_name.ilike.%.obj,file_name.ilike.%.fbx,file_name.ilike.%.stl,file_name.ilike.%.glb,file_name.ilike.%.gltf,file_name.ilike.%.ply,file_name.ilike.%.dae')
+          .limit(100);
         
         if (error) throw error;
         
-        // Filter out non-3D files strictly to ensure only 3D models appear
-        const public3DOnly = (data || [])
-          .filter((item: PublicOptimization) => {
-            const fileType = item.file_type.toLowerCase();
-            const fileName = item.file_name.toLowerCase();
-            return (
-              fileType.startsWith('model/') ||
-              fileName.match(/\.(obj|fbx|stl|glb|gltf|ply|dae)$/i)
-            );
-          })
-          .map((item: PublicOptimization) => ({
-            ...item,
-            fileTypeLabel: item.file_type.split('/')[1]?.toUpperCase() || '3D'
-          }));
+        const public3DOnly = (data || []).map((item: PublicOptimization) => ({
+          ...item,
+          fileTypeLabel: item.file_type.split('/')[1]?.toUpperCase() || '3D'
+        }));
 
         if (!isMounted) return;
         setItems(public3DOnly);
