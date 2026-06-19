@@ -387,6 +387,7 @@ export default function ChatWindow({
             placeholder="Send a message"
             className="w-full bg-transparent border-none outline-none resize-none text-slate-800 placeholder:text-slate-400 text-[14px] min-h-[44px] px-2 py-1"
             rows={1}
+            maxLength={1000}
           />
           <div className="flex justify-end items-center gap-2 mt-1">
             <div className="relative mr-auto">

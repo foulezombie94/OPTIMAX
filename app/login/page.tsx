@@ -189,6 +189,7 @@ function LoginContent() {
                         className="w-full pl-6 pr-12 py-4 bg-white/[0.02] border border-white/10 rounded-xl focus:ring-1 focus:ring-primary focus:border-primary transition-all outline-none text-on-surface placeholder:text-on-surface-variant/40" 
                         placeholder="name@example.com" 
                         type="email" 
+                        maxLength={255}
                       />
                       <span className="material-symbols-outlined absolute right-5 top-1/2 -translate-y-1/2 text-on-surface-variant/50">mail</span>
                     </div>
@@ -207,6 +208,7 @@ function LoginContent() {
                         className="w-full pl-6 pr-12 py-4 bg-white/[0.02] border border-white/10 rounded-xl focus:ring-1 focus:ring-primary focus:border-primary transition-all outline-none text-on-surface placeholder:text-on-surface-variant/40" 
                         placeholder="••••••••" 
                         type={showPassword ? 'text' : 'password'} 
+                        maxLength={255}
                       />
                       <button 
                         type="button"
@@ -293,6 +295,7 @@ function LoginContent() {
                         className="w-full pl-6 pr-12 py-4 bg-white/[0.02] border border-white/10 rounded-xl focus:ring-1 focus:ring-primary focus:border-primary transition-all outline-none text-on-surface placeholder:text-on-surface-variant/40" 
                         placeholder="your_legendary_name" 
                         type="text" 
+                        maxLength={50}
                       />
                       <span className="material-symbols-outlined absolute right-5 top-1/2 -translate-y-1/2 text-on-surface-variant/50">person</span>
                     </div>
