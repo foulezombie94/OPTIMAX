@@ -288,7 +288,7 @@ function CommunityContent() {
   }, [items, debouncedQuery, sortBy]);
 
   return (
-    <main className="flex-grow pt-[110px] pb-28 px-6 md:px-12 relative w-full flex-1 z-10 bg-gradient-to-b from-[#0d0d10] via-[#131318] to-[#0d0d10]">
+    <main className="flex-grow pt-[110px] pb-28 px-4 sm:px-6 md:px-12 relative w-full flex-1 z-10 bg-gradient-to-b from-[#0d0d10] via-[#131318] to-[#0d0d10] overflow-x-hidden">
       {/* Decorative Orbs & Mesh Gradients */}
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none"></div>
       <div className="absolute top-1/3 right-1/4 w-[450px] h-[450px] bg-tertiary/10 rounded-full blur-[150px] pointer-events-none"></div>

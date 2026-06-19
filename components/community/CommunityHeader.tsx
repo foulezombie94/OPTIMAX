@@ -6,7 +6,7 @@ export function CommunityHeader() {
         Showroom Virtuel
       </div>
       
-      <h1 className="font-display text-[48px] md:text-[68px] font-black text-on-surface tracking-tighter leading-none bg-clip-text text-transparent bg-gradient-to-r from-primary via-tertiary to-secondary">
+      <h1 className="font-display text-[36px] sm:text-[48px] md:text-[68px] font-black text-on-surface tracking-tighter leading-none bg-clip-text text-transparent bg-gradient-to-r from-primary via-tertiary to-secondary break-words">
         Galerie de la Communauté
       </h1>
       <p className="text-body-lg text-on-surface-variant max-w-2xl mx-auto leading-relaxed font-light">
