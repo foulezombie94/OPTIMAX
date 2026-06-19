@@ -22,7 +22,7 @@ export default async function MessagesLayout({
   // Fetch all messages involving the user to determine conversations
   const { data: msgs } = await supabase
     .from('messages')
-    .select('sender_id, receiver_id, created_at, content')
+    .select('id, sender_id, receiver_id, created_at, content, is_read')
     .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
     .order('created_at', { ascending: false });
 
@@ -77,6 +77,9 @@ export default async function MessagesLayout({
       avatarUrl: partner.avatar_url || undefined,
       latestMessageSnippet: snippet,
       latestMessageAt: latestMsg ? new Date(latestMsg.created_at).getTime() : undefined,
+      isUnread: latestMsg ? (latestMsg.receiver_id === user.id && !latestMsg.is_read) : false,
+      lastSenderId: latestMsg ? latestMsg.sender_id : undefined,
+      isOpenedByPartner: latestMsg ? (latestMsg.sender_id === user.id && latestMsg.is_read) : false,
     };
   }).sort((a, b) => {
     const timeA = typeof a.latestMessageAt === 'number' ? a.latestMessageAt : 0;
@@ -85,7 +88,7 @@ export default async function MessagesLayout({
   });
 
   return (
-    <MessagesLayoutClient dbPartners={sortedPartners}>
+    <MessagesLayoutClient dbPartners={sortedPartners} currentUserId={user.id}>
       {children}
     </MessagesLayoutClient>
   );

@@ -14,6 +14,9 @@ type Partner = {
   isOnline?: boolean;
   isPro?: boolean;
   verified?: boolean;
+  isUnread?: boolean;
+  lastSenderId?: string;
+  isOpenedByPartner?: boolean;
 };
 
 const getInitials = (name: string) => {
@@ -57,43 +60,53 @@ const getRelativeSnapTime = (dateInput: string | number | undefined) => {
   return `${diffInWeeks} sem`;
 };
 
-const getSnapStatus = (partnerId: string, isUnread: boolean) => {
-  if (isUnread) {
-    return {
-      text: 'Nouveau Snap',
-      textColor: 'text-[#bc2a8d] font-bold tracking-tight',
-      icon: <div className="w-[12px] h-[12px] rounded-[2px] bg-[#bc2a8d] mr-2 shrink-0"></div>
-    };
+const getSnapStatus = (partner: any, isLocallyUnread: boolean, currentUserId: string) => {
+  const isUnread = isLocallyUnread || partner.isUnread;
+
+  if (partner.lastSenderId === partner.id) {
+    if (isUnread) {
+      return {
+        text: 'Nouveau Snap',
+        textColor: 'text-[#bc2a8d] font-bold tracking-tight',
+        icon: <div className="w-[12px] h-[12px] rounded-[2px] bg-[#bc2a8d] mr-2 shrink-0"></div>
+      };
+    } else {
+      return {
+        text: 'Reçu',
+        textColor: 'text-[#8e8e93]',
+        icon: <div className="w-[12px] h-[12px] rounded-[2px] border-[2px] border-[#eb5252] mr-2 shrink-0"></div>
+      };
+    }
+  } else if (partner.lastSenderId === currentUserId) {
+    if (partner.isOpenedByPartner) {
+      return {
+        text: 'Ouvert',
+        textColor: 'text-[#8e8e93]',
+        icon: <span className="material-symbols-outlined text-[14px] text-[#bc2a8d] mr-1.5" style={{ fontVariationSettings: "'FILL' 0" }}>play_arrow</span>
+      };
+    } else {
+      return {
+        text: 'Remis',
+        textColor: 'text-[#8e8e93]',
+        icon: <span className="material-symbols-outlined text-[14px] text-[#007aff] mr-1.5" style={{ fontVariationSettings: "'FILL' 1" }}>play_arrow</span>
+      };
+    }
   }
-  
-  const hash = partnerId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const type = hash % 3;
-  if (type === 0) {
-    return {
-      text: 'Ouvert',
-      textColor: 'text-[#8e8e93]',
-      icon: <span className="material-symbols-outlined text-[14px] text-[#bc2a8d] mr-1.5" style={{ fontVariationSettings: "'FILL' 0" }}>play_arrow</span>
-    };
-  } else if (type === 1) {
-    return {
-      text: 'Remis',
-      textColor: 'text-[#8e8e93]',
-      icon: <span className="material-symbols-outlined text-[14px] text-[#007aff] mr-1.5" style={{ fontVariationSettings: "'FILL' 1" }}>play_arrow</span>
-    };
-  } else {
-    return {
-      text: 'Reçu',
-      textColor: 'text-[#8e8e93]',
-      icon: <div className="w-[12px] h-[12px] rounded-[2px] border-[2px] border-[#eb5252] mr-2 shrink-0"></div>
-    };
-  }
+
+  return {
+    text: 'Nouvelle discussion',
+    textColor: 'text-[#8e8e93]',
+    icon: <div className="w-[12px] h-[12px] rounded-[2px] border-[2px] border-[#8e8e93] mr-2 shrink-0"></div>
+  };
 };
 
 export default function MessagesLayoutClient({
   dbPartners,
+  currentUserId,
   children,
 }: {
   dbPartners: Partner[];
+  currentUserId: string;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -127,7 +140,9 @@ export default function MessagesLayoutClient({
       latestMessageAt: getRelativeSnapTime(p.latestMessageAt),
       isOnline: p.isOnline !== undefined ? p.isOnline : true,
       isPinned: pinnedChats.has(p.id),
-      isUnread: unreadChats.has(p.id),
+      isUnread: unreadChats.has(p.id) || (p.isUnread ?? false),
+      lastSenderId: p.lastSenderId,
+      isOpenedByPartner: p.isOpenedByPartner ?? false,
     }))
     .sort((a, b) => {
       if (a.isPinned && !b.isPinned) return -1;
@@ -317,7 +332,7 @@ export default function MessagesLayoutClient({
                           </div>
                           <div className="flex items-center text-[13px] font-medium mt-[1px]">
                             {(() => {
-                              const status = getSnapStatus(partner.id, partner.isUnread);
+                              const status = getSnapStatus(partner, partner.isUnread, currentUserId);
                               return (
                                 <>
                                   {status.icon}
