@@ -44,8 +44,31 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     profile = res.data;
   }
 
-  if (!profile || profile.deactivated_at) {
+  if (!profile) {
     notFound();
+  }
+
+  if (profile.deactivated_at) {
+    return (
+      <main className="flex-grow pt-[120px] pb-16 px-6 relative w-full flex-1 z-10 flex flex-col items-center justify-center min-h-[80vh] text-center">
+        <div className="hero-bg" title="Abstract liquid background"></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-error/10 rounded-full blur-[120px] pointer-events-none"></div>
+        
+        <div className="glass-panel p-12 rounded-3xl max-w-xl mx-auto border border-error/20 flex flex-col items-center relative z-10">
+          <div className="w-24 h-24 bg-error/10 text-error rounded-full flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(255,100,100,0.15)]">
+            <span className="material-symbols-outlined text-[48px]">person_off</span>
+          </div>
+          <h1 className="text-display-md text-on-surface font-black mb-4 tracking-tight">Compte Désactivé</h1>
+          <p className="text-on-surface-variant text-body-lg mb-8 max-w-md mx-auto">
+            Le profil de <b className="text-on-surface">{profile.username || username}</b> a été désactivé et n'est plus accessible publiquement.
+          </p>
+          <Link href="/community" className="px-8 py-3 bg-surface text-on-surface rounded-xl font-bold hover:bg-surface-dim transition-colors border border-white/10 flex items-center gap-2 group">
+            <span className="material-symbols-outlined text-[20px] group-hover:-translate-x-1 transition-transform">arrow_back</span>
+            Retour à la communauté
+          </Link>
+        </div>
+      </main>
+    );
   }
 
   // Get current logged-in user to pass to the message form

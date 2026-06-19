@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useTranslation, SUPPORTED_LANGUAGES } from '@/contexts/TranslationContext';
+import { logout } from '@/app/login/actions';
 
 type NavbarClientProps = {
   user: { email?: string; id: string } | null;
@@ -133,7 +134,7 @@ export default function NavbarClient({ user, isPro, username }: NavbarClientProp
             
             {/* Logout (if logged in) */}
             {user && (
-              <form action="/auth/signout" method="post" className="flex items-center">
+              <form action={logout} className="flex items-center">
                 <button type="submit" className="text-on-surface hover:text-error transition-colors flex items-center cursor-pointer" title={t("Déconnexion")}>
                   <span className="material-symbols-outlined text-[18px] sm:text-[20px] ml-0.5 sm:ml-1">logout</span>
                 </button>
