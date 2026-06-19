@@ -80,22 +80,22 @@ export default function NavbarClient({ user, isPro, username }: NavbarClientProp
 
         {/* Right controls */}
         <div className="pointer-events-auto flex items-center gap-4">
-          <div className="border border-white/10 rounded-full px-4 py-1.5 flex items-center gap-4 bg-white/5 relative">
+          <div className="border border-white/10 rounded-full px-2.5 sm:px-4 py-1.5 flex items-center gap-2 sm:gap-4 bg-white/5 relative">
             
             {/* Language Dropdown */}
             <div className="relative" ref={langMenuRef}>
               <button 
                 onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
-                className="flex items-center gap-1 text-on-surface hover:text-primary transition-colors cursor-pointer"
+                className="flex items-center gap-0.5 sm:gap-1 text-on-surface hover:text-primary transition-colors cursor-pointer"
                 title={currentLangName}
               >
-                <span className="material-symbols-outlined text-[18px]">language</span>
-                <span className="uppercase text-xs font-bold">{currentLanguage}</span>
-                <span className="material-symbols-outlined text-[16px]">keyboard_arrow_down</span>
+                <span className="material-symbols-outlined text-[16px] sm:text-[18px]">language</span>
+                <span className="uppercase text-[10px] sm:text-xs font-bold">{currentLanguage}</span>
+                <span className="material-symbols-outlined text-[14px] sm:text-[16px]">keyboard_arrow_down</span>
               </button>
               
               {isLangMenuOpen && (
-                <div className="absolute top-full mt-4 right-0 w-40 bg-surface/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-xl overflow-hidden py-2 flex flex-col z-50">
+                <div className="absolute top-full mt-4 right-0 w-40 bg-surface/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-xl overflow-hidden py-2 flex flex-col z-50 max-h-[calc(100vh-6rem)] overflow-y-auto">
                   {SUPPORTED_LANGUAGES.map((lang) => (
                     <button
                       key={lang.code}
@@ -115,17 +115,17 @@ export default function NavbarClient({ user, isPro, username }: NavbarClientProp
             {/* User / Profile */}
             {user ? (
               <Link href="/profile" className="text-on-surface hover:text-primary transition-colors flex items-center" title={`${t("Profil")} (${username})`}>
-                <span className="material-symbols-outlined text-[20px]">person</span>
+                <span className="material-symbols-outlined text-[18px] sm:text-[20px]">person</span>
               </Link>
             ) : (
               <Link href="/login" className="text-on-surface hover:text-primary transition-colors flex items-center" title={t("Connexion")}>
-                <span className="material-symbols-outlined text-[20px]">login</span>
+                <span className="material-symbols-outlined text-[18px] sm:text-[20px]">login</span>
               </Link>
             )}
 
             {/* Cart / Pricing */}
             <Link href="/pricing" className="text-on-surface hover:text-primary transition-colors flex items-center relative" title={t("Tarifs")}>
-              <span className="material-symbols-outlined text-[20px]">shopping_cart</span>
+              <span className="material-symbols-outlined text-[18px] sm:text-[20px]">shopping_cart</span>
               {isPro && (
                 <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500 border-2 border-surface"></span>
               )}
@@ -135,7 +135,7 @@ export default function NavbarClient({ user, isPro, username }: NavbarClientProp
             {user && (
               <form action="/auth/signout" method="post" className="flex items-center">
                 <button type="submit" className="text-on-surface hover:text-error transition-colors flex items-center cursor-pointer" title={t("Déconnexion")}>
-                  <span className="material-symbols-outlined text-[20px] ml-1">logout</span>
+                  <span className="material-symbols-outlined text-[18px] sm:text-[20px] ml-0.5 sm:ml-1">logout</span>
                 </button>
               </form>
             )}
@@ -159,7 +159,7 @@ export default function NavbarClient({ user, isPro, username }: NavbarClientProp
       {isMobileMenuOpen && (
         <div 
           ref={mobileMenuRef}
-          className="absolute top-full left-0 right-0 mt-3 bg-[#00020A]/95 backdrop-blur-xl border border-white/5 rounded-3xl p-5 shadow-2xl flex flex-col gap-1 z-40 md:hidden animate-fade-in"
+          className="absolute top-full left-0 right-0 mt-3 bg-[#00020A]/95 backdrop-blur-xl border border-white/5 rounded-3xl p-5 shadow-2xl flex flex-col gap-1 z-40 md:hidden animate-fade-in max-h-[calc(100vh-6rem)] overflow-y-auto"
         >
           <Link 
             href="/" 
