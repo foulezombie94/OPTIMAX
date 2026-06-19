@@ -37,7 +37,7 @@ export function CommunityModal({ item, isClosing, onClose, likedItems, onLike, o
         </button>
         
         {/* Media Visualizer (Left Panel) */}
-        <div className="w-full md:w-2/3 h-80 md:h-[600px] bg-[#070709] flex items-center justify-center relative overflow-hidden">
+        <div className="w-full md:w-2/3 h-[50vh] md:h-[600px] min-h-[300px] shrink-0 bg-[#070709] flex items-center justify-center relative overflow-hidden">
           {/* Tech scan grid lines */}
           <div className="absolute inset-0 tech-grid opacity-30 pointer-events-none"></div>
           
@@ -51,7 +51,7 @@ export function CommunityModal({ item, isClosing, onClose, likedItems, onLike, o
         </div>
         
         {/* Details & Interactive Actions (Right Panel) */}
-        <div className="w-full md:w-1/3 p-8 flex flex-col justify-between border-l border-white/5 bg-[#121217]/50">
+        <div className="w-full md:w-1/3 p-5 sm:p-6 md:p-8 flex flex-col justify-between border-l border-white/5 bg-[#121217]/50">
           <div className="space-y-6">
             <div className="space-y-1.5">
               {item.creator_is_pro && (
