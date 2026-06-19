@@ -84,6 +84,8 @@ export default function ChatWindow({
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
@@ -171,13 +173,7 @@ export default function ChatWindow({
     scrollToBottom();
   }, [messages]);
 
-  const sendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim()) return;
-
-    const content = input.trim();
-    setInput('');
-
+  const sendDirectMessage = async (content: string) => {
     const now = new Date();
     const tempId = crypto.randomUUID();
     const isPdf = content.toLowerCase().endsWith('.pdf');
@@ -203,6 +199,23 @@ export default function ChatWindow({
     if (error) {
       console.error('Error sending message:', error);
       setMessages(prev => prev.filter(m => m.id !== tempId));
+    }
+  };
+
+  const sendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim()) return;
+
+    const content = input.trim();
+    setInput('');
+    await sendDirectMessage(content);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const isImage = file.type.startsWith('image/');
+      sendDirectMessage(isImage ? `[Image] ${file.name}` : `[Fichier] ${file.name}`);
     }
   };
 
@@ -371,9 +384,29 @@ export default function ChatWindow({
       {/* Input Area (Snapchat Style) */}
       <div className="px-3 pb-8 pt-3 bg-black flex items-center gap-3 shrink-0 select-none border-t border-[#111]">
         
+        {/* Hidden File Inputs */}
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          className="hidden" 
+          onChange={handleFileUpload} 
+          accept="image/*,video/*,.pdf" 
+        />
+        <input 
+          type="file" 
+          ref={cameraInputRef} 
+          className="hidden" 
+          onChange={handleFileUpload} 
+          accept="image/*" 
+          capture="environment" 
+        />
+
         {/* Camera Button */}
-        <button className="w-10 h-10 bg-white rounded-full flex items-center justify-center shrink-0 cursor-pointer shadow-[0_0_8px_rgba(255,255,255,0.1)]">
-          <span className="material-symbols-outlined text-black text-[22px] font-bold" style={{fontVariationSettings: "'FILL' 1"}}>photo_camera</span>
+        <button 
+          onClick={() => cameraInputRef.current?.click()}
+          className="w-10 h-10 bg-[#333] hover:bg-[#444] transition-colors rounded-full flex items-center justify-center shrink-0 cursor-pointer"
+        >
+          <span className="material-symbols-outlined text-white text-[22px]" style={{fontVariationSettings: "'FILL' 0, 'wght' 400"}}>photo_camera</span>
         </button>
 
         {/* Input Pill */}
@@ -442,12 +475,12 @@ export default function ChatWindow({
             )}
           </div>
           
-          <button type="button" className="text-white hover:text-[#ccc] transition-colors flex items-center justify-center cursor-pointer">
-            <span className="material-symbols-outlined text-[28px]" style={{fontVariationSettings: "'FILL' 0, 'wght' 300"}}>photo_library</span>
-          </button>
-          
-          <button type="button" className="text-white hover:text-[#ccc] transition-colors flex items-center justify-center cursor-pointer">
-            <span className="material-symbols-outlined text-[28px]" style={{fontVariationSettings: "'FILL' 0, 'wght' 300"}}>sports_esports</span>
+          <button 
+            type="button" 
+            onClick={() => fileInputRef.current?.click()}
+            className="text-white hover:text-[#ccc] transition-colors flex items-center justify-center cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[28px]" style={{fontVariationSettings: "'FILL' 0, 'wght' 300"}}>image</span>
           </button>
         </div>
       </div>
