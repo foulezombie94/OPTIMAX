@@ -92,14 +92,20 @@ const AudioMessageBubble = ({ content, isMe }: { content: string, isMe: boolean 
      parsedTranscript = split[3] || '';
   }
 
-  const togglePlay = () => {
-     if (!parsedBase64) return;
-     if (isPlaying) {
-        audioRef.current?.pause();
-     } else {
-        audioRef.current?.play();
+  const togglePlay = async () => {
+     if (!parsedBase64 || !audioRef.current) return;
+     try {
+       if (isPlaying) {
+          audioRef.current.pause();
+          setIsPlaying(false);
+       } else {
+          await audioRef.current.play();
+          setIsPlaying(true);
+       }
+     } catch (err) {
+       console.error("Audio playback error:", err);
+       setIsPlaying(false);
      }
-     setIsPlaying(!isPlaying);
   };
 
   const handleTimeUpdate = () => {
@@ -115,6 +121,7 @@ const AudioMessageBubble = ({ content, isMe }: { content: string, isMe: boolean 
       audioRef.current.onended = () => {
          setIsPlaying(false);
          setProgress(0);
+         if (audioRef.current) audioRef.current.currentTime = 0;
       };
     }
   }, []);
@@ -225,16 +232,22 @@ export default function ChatWindow({
       };
 
       mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        const mimeType = mediaRecorder.mimeType || 'audio/webm';
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        
+        if (audioBlob.size === 0) {
+           console.error("Audio blob is empty.");
+           return;
+        }
+
         const reader = new FileReader();
         reader.readAsDataURL(audioBlob);
         reader.onloadend = () => {
           const base64Audio = reader.result as string;
           const currentTranscript = transcriptRef.current;
-          const duration = recordingDurationRef.current;
-          if (duration > 0) {
-             sendDirectMessage(`__AUDIO__|${duration}|${base64Audio}|${currentTranscript}`);
-          }
+          const duration = recordingDurationRef.current || 1; // minimum 1 second to avoid 0s audio
+          sendDirectMessage(`__AUDIO__|${duration}|${base64Audio}|${currentTranscript}`);
         };
       };
 
@@ -282,10 +295,14 @@ export default function ChatWindow({
   const stopRecording = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
-      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+      // We stop the tracks inside the onstop callback now to ensure data is fully flushed
     }
     if (recognitionRef.current) {
-      recognitionRef.current.stop();
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {
+        // Ignore if already stopped
+      }
     }
     if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
     setIsRecording(false);
