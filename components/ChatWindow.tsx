@@ -246,9 +246,12 @@ export default function ChatWindow({
           <button className="h-9 px-4 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-lg text-[13px] font-semibold transition-colors shadow-sm flex items-center justify-center cursor-pointer">
             Épingle
           </button>
-          <button className="h-9 px-4 bg-[#0062ff] hover:bg-blue-700 text-white rounded-lg text-[13px] font-semibold transition-colors shadow-sm flex items-center justify-center cursor-pointer">
+          <Link 
+            href={`/u/${partnerUsername || partnerId}`}
+            className="h-9 px-4 bg-[#0062ff] hover:bg-blue-700 text-white rounded-lg text-[13px] font-semibold transition-colors shadow-sm flex items-center justify-center cursor-pointer"
+          >
             View profile
-          </button>
+          </Link>
         </div>
       </div>
 
