@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
+import { useState, useEffect, useRef } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { createClient } from '@/utils/supabase/client';
 
 type Partner = {
   id: string;
@@ -110,6 +111,8 @@ export default function MessagesLayoutClient({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const supabase = createClient();
   const [searchQuery, setSearchQuery] = useState('');
 
   // Selected chat ID
@@ -401,19 +404,44 @@ export default function MessagesLayoutClient({
               <div className="font-bold text-white text-[15px] truncate">{contextMenu.partner.displayName}</div>
             </div>
             
-            <button className="w-full px-4 py-2.5 text-left flex items-center text-white hover:bg-white/5 transition-colors group" onClick={() => { closeContextMenu(); }}>
+            <button className="w-full px-4 py-2.5 text-left flex items-center text-white hover:bg-white/5 transition-colors group" onClick={() => {
+              closeContextMenu();
+              router.push(`/messages/${contextMenu.partner!.id}`);
+            }}>
               <span className="material-symbols-outlined text-[20px] mr-3 text-[#8e8e93] group-hover:text-white" style={{ fontVariationSettings: "'wght' 300" }}>photo_camera</span>
               <span className="font-semibold text-[14px]">Snap</span>
             </button>
-            <button className="w-full px-4 py-2.5 text-left flex items-center text-white hover:bg-white/5 transition-colors group" onClick={() => { closeContextMenu(); window.location.href = `/messages/${contextMenu.partner!.id}`; }}>
+            <button className="w-full px-4 py-2.5 text-left flex items-center text-white hover:bg-white/5 transition-colors group" onClick={() => { closeContextMenu(); router.push(`/messages/${contextMenu.partner!.id}`); }}>
               <span className="material-symbols-outlined text-[20px] mr-3 text-[#8e8e93] group-hover:text-white" style={{ fontVariationSettings: "'wght' 300" }}>chat_bubble</span>
               <span className="font-semibold text-[14px]">Chat</span>
             </button>
-            <button className="w-full px-4 py-2.5 text-left flex items-center text-white hover:bg-white/5 transition-colors group" onClick={() => { closeContextMenu(); alert('Appel vocal simulé'); }}>
+            <button className="w-full px-4 py-2.5 text-left flex items-center text-white hover:bg-white/5 transition-colors group" onClick={() => {
+              closeContextMenu();
+              window.dispatchEvent(new CustomEvent('start-global-call', {
+                detail: {
+                  partnerId: contextMenu.partner!.id,
+                  partnerName: contextMenu.partner!.displayName,
+                  partnerUsername: contextMenu.partner!.username,
+                  partnerAvatarUrl: contextMenu.partner!.avatarUrl,
+                  type: 'audio'
+                }
+              }));
+            }}>
               <span className="material-symbols-outlined text-[20px] mr-3 text-[#8e8e93] group-hover:text-white" style={{ fontVariationSettings: "'wght' 300" }}>call</span>
               <span className="font-semibold text-[14px]">Appel vocal</span>
             </button>
-            <button className="w-full px-4 py-2.5 text-left flex items-center text-white hover:bg-white/5 transition-colors group" onClick={() => { closeContextMenu(); alert('Appel vidéo simulé'); }}>
+            <button className="w-full px-4 py-2.5 text-left flex items-center text-white hover:bg-white/5 transition-colors group" onClick={() => {
+              closeContextMenu();
+              window.dispatchEvent(new CustomEvent('start-global-call', {
+                detail: {
+                  partnerId: contextMenu.partner!.id,
+                  partnerName: contextMenu.partner!.displayName,
+                  partnerUsername: contextMenu.partner!.username,
+                  partnerAvatarUrl: contextMenu.partner!.avatarUrl,
+                  type: 'video'
+                }
+              }));
+            }}>
               <span className="material-symbols-outlined text-[20px] mr-3 text-[#8e8e93] group-hover:text-white" style={{ fontVariationSettings: "'wght' 300" }}>videocam</span>
               <span className="font-semibold text-[14px]">Appel vidéo</span>
             </button>
@@ -433,14 +461,46 @@ export default function MessagesLayoutClient({
               <span className="font-semibold text-[14px]">{contextMenu.partner.isPinned ? 'Désépingler' : 'Épingler la conversation'}</span>
             </button>
 
-            <button className="w-full px-4 py-2.5 text-left flex items-center text-white hover:bg-white/5 transition-colors group" onClick={() => {
-              setUnreadChats(prev => {
-                const next = new Set(prev);
-                if (next.has(contextMenu.partner!.id)) next.delete(contextMenu.partner!.id);
-                else next.add(contextMenu.partner!.id);
-                return next;
-              });
+            <button className="w-full px-4 py-2.5 text-left flex items-center text-white hover:bg-white/5 transition-colors group" onClick={async () => {
+              const partnerId = contextMenu.partner!.id;
+              const isCurrentlyUnread = contextMenu.partner!.isUnread;
+              
+              if (isCurrentlyUnread) {
+                // Mark as read: set is_read = true on all messages from this partner to me
+                await supabase
+                  .from('messages')
+                  .update({ is_read: true })
+                  .eq('sender_id', partnerId)
+                  .eq('receiver_id', currentUserId)
+                  .eq('is_read', false);
+                setUnreadChats(prev => {
+                  const next = new Set(prev);
+                  next.delete(partnerId);
+                  return next;
+                });
+              } else {
+                // Mark as unread: set is_read = false on the latest message from this partner
+                const { data: latestMsgs } = await supabase
+                  .from('messages')
+                  .select('id')
+                  .eq('sender_id', partnerId)
+                  .eq('receiver_id', currentUserId)
+                  .order('created_at', { ascending: false })
+                  .limit(1);
+                if (latestMsgs && latestMsgs.length > 0) {
+                  await supabase
+                    .from('messages')
+                    .update({ is_read: false })
+                    .eq('id', latestMsgs[0].id);
+                }
+                setUnreadChats(prev => {
+                  const next = new Set(prev);
+                  next.add(partnerId);
+                  return next;
+                });
+              }
               closeContextMenu();
+              router.refresh();
             }}>
               <span className="material-symbols-outlined text-[20px] mr-3 text-[#8e8e93] group-hover:text-white" style={{ fontVariationSettings: "'wght' 300" }}>mark_chat_unread</span>
               <span className="font-semibold text-[14px]">{contextMenu.partner.isUnread ? 'Marquer comme lu' : 'Marquer comme non lu'}</span>
@@ -448,13 +508,20 @@ export default function MessagesLayoutClient({
 
             <div className="h-[1px] bg-white/5 my-1 mx-2"></div>
 
-            <button className="w-full px-4 py-2.5 text-left flex items-center text-[#ff3b30] hover:bg-[#ff3b30]/10 transition-colors group" onClick={() => {
+            <button className="w-full px-4 py-2.5 text-left flex items-center text-[#ff3b30] hover:bg-[#ff3b30]/10 transition-colors group" onClick={async () => {
+              const partnerId = contextMenu.partner!.id;
+              // Delete all messages between me and this partner
+              await supabase
+                .from('messages')
+                .delete()
+                .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${partnerId}),and(sender_id.eq.${partnerId},receiver_id.eq.${currentUserId})`);
               setHiddenChats(prev => {
                 const next = new Set(prev);
-                next.add(contextMenu.partner!.id);
+                next.add(partnerId);
                 return next;
               });
               closeContextMenu();
+              router.refresh();
             }}>
               <span className="material-symbols-outlined text-[20px] mr-3" style={{ fontVariationSettings: "'wght' 300" }}>delete</span>
               <span className="font-semibold text-[14px]">Effacer de la liste</span>
