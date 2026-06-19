@@ -328,7 +328,7 @@ export default function ChatWindow({
     setLoading(true);
     const { data } = await supabase
       .from('messages')
-      .select('*')
+      .select('id, sender_id, content, created_at')
       .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${partnerId}),and(sender_id.eq.${partnerId},receiver_id.eq.${currentUserId})`)
       .order('created_at', { ascending: false })
       .limit(50);

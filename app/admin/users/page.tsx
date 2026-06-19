@@ -8,7 +8,8 @@ export default async function UsersAdminPage() {
   const { data: profiles, error } = await supabase
     .from('profiles')
     .select('*')
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(100);
 
   if (error) {
     return <div className="text-error p-4">Erreur lors de la récupération des utilisateurs.</div>;
