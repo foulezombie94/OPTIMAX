@@ -106,8 +106,8 @@ export default function MessagesLayoutClient({
           }`}>
             
             {/* Search Bar */}
-            <div className="p-4 pb-2">
-              <div className="relative flex items-center bg-[#262628] rounded-full px-4 py-2 transition-colors">
+            <div className="p-3 pb-2 flex items-center">
+              <div className="relative flex items-center bg-[#262628] rounded-full px-3 py-1.5 transition-colors flex-grow">
                 <span className="material-symbols-outlined text-[#8e8e93] text-[20px] mr-2 select-none">search</span>
                 <input
                   type="text"
@@ -133,8 +133,8 @@ export default function MessagesLayoutClient({
                         href={`/messages/${partner.id}`}
                         className="flex flex-col items-center shrink-0 group relative cursor-pointer"
                       >
-                        <div className="relative w-[68px] h-[68px] rounded-full p-[2.5px] bg-gradient-to-tr from-[#bc2a8d] to-[#e95950]">
-                          <div className="w-full h-full rounded-full bg-black p-[2.5px]">
+                        <div className="relative w-[68px] h-[68px] rounded-full p-[2.5px] bg-[#333333]">
+                          <div className="w-full h-full rounded-full bg-black p-[2.5px] relative">
                             {partner.avatarUrl ? (
                               <img
                                 src={partner.avatarUrl}
@@ -150,6 +150,15 @@ export default function MessagesLayoutClient({
                                 {getInitials(partner.displayName)}
                               </div>
                             )}
+                            
+                            {/* Overlay refresh icon */}
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/10 rounded-full z-10 pointer-events-none">
+                              <span className="material-symbols-outlined text-white text-[22px] font-bold opacity-80" style={{ fontVariationSettings: "'wght' 600" }}>sync</span>
+                            </div>
+                            {/* Lock icon */}
+                            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-4 h-4 bg-black rounded-full flex items-center justify-center z-20">
+                              <span className="material-symbols-outlined text-white text-[10px] font-bold">lock</span>
+                            </div>
                           </div>
                           
                           {/* Concentric call wave rings */}
@@ -185,12 +194,12 @@ export default function MessagesLayoutClient({
                       <Link
                         key={partner.id}
                         href={`/messages/${partner.id}`}
-                        className={`px-4 py-2 flex items-center transition-all cursor-pointer border-b border-white/[0.05] ${
+                        className={`pl-4 pr-3 py-3 flex items-center transition-all cursor-pointer border-b border-[#1a1a1c] ${
                           isSelected ? 'bg-white/5' : 'hover:bg-white/5'
                         }`}
                       >
                         {/* Avatar */}
-                        <div className="relative w-[50px] h-[50px] shrink-0">
+                        <div className="relative w-[52px] h-[52px] shrink-0">
                           {partner.avatarUrl ? (
                             <img
                               src={partner.avatarUrl}
@@ -209,35 +218,40 @@ export default function MessagesLayoutClient({
                           {isThisPartnerCalling && (
                             <div className="absolute inset-0 rounded-full border-2 border-primary animate-ping"></div>
                           )}
-                          {partner.isOnline && !isThisPartnerCalling && (
-                            <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-black"></div>
-                          )}
+                          {/* Pin Icon */}
+                          <div className="absolute -bottom-1 -right-1 bg-black rounded-full p-0.5 z-10 flex items-center justify-center">
+                            <span className="material-symbols-outlined text-white text-[12px] opacity-80" style={{ transform: 'rotate(45deg)' }}>push_pin</span>
+                          </div>
                         </div>
                         
                         {/* Texts */}
-                        <div className="flex-grow min-w-0 ml-3">
+                        <div className="flex-grow min-w-0 ml-4">
                           <div className="flex items-center mb-0.5">
-                            <h4 className={`text-[17px] font-semibold truncate pr-2 ${isSelected ? 'text-white' : 'text-[#f2f2f2]'}`}>
+                            <h4 className={`text-[17px] font-bold truncate pr-2 tracking-tight ${isSelected ? 'text-white' : 'text-[#f2f2f2]'}`}>
                               {partner.displayName}
                             </h4>
                           </div>
                           <div className="flex items-center text-[13px] text-[#8e8e93] font-medium">
-                            <span className="material-symbols-outlined text-[14px] text-[#9b59b6] mr-1.5" style={{ fontVariationSettings: "'FILL' 1" }}>send</span>
-                            <span className="truncate max-w-[120px] lg:max-w-[160px]">{partner.latestMessageSnippet}</span>
-                            <span className="mx-1.5">•</span>
+                            {/* Purple outline square */}
+                            <div className="w-[12px] h-[12px] rounded-[2px] border-[2px] border-[#bc2a8d] mr-2 shrink-0"></div>
+                            <span className="truncate max-w-[140px]">{partner.latestMessageSnippet}</span>
+                            <span className="mx-1.5">-</span>
                             <span className="shrink-0">{partner.latestMessageAt}</span>
                           </div>
                         </div>
 
                         {/* Right side actions */}
-                        <div className="shrink-0 flex items-center ml-2 border-l border-white/10 pl-3 h-8">
+                        <div className="shrink-0 flex flex-col items-center justify-center ml-2 border-l border-[#1a1a1c] pl-4 w-[60px] h-full">
                           {isThisPartnerCalling ? (
                             <div className="relative flex items-center justify-center w-8 h-8 rounded-full bg-primary text-black shadow-[0_0_15px_rgba(77,142,255,0.5)] animate-pulse">
                               <span className="absolute inset-0 rounded-full bg-primary/40 animate-ping"></span>
                               <span className="material-symbols-outlined text-[16px] font-bold">call</span>
                             </div>
                           ) : (
-                            <span className="material-symbols-outlined text-[24px] text-[#8e8e93] hover:text-white transition-colors cursor-pointer" style={{ fontVariationSettings: "'wght' 300" }}>photo_camera</span>
+                            <>
+                              <span className="material-symbols-outlined text-[24px] text-white/70 hover:text-white transition-colors mb-0.5" style={{ fontVariationSettings: "'wght' 300" }}>photo_camera</span>
+                              <span className="text-[10px] font-bold text-white tracking-wide">Répondre</span>
+                            </>
                           )}
                         </div>
                       </Link>
