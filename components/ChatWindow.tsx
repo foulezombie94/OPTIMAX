@@ -185,185 +185,144 @@ export default function ChatWindow({
   };
 
   return (
-    <div className="flex flex-col h-full w-full bg-transparent font-sans">
+    <div className="flex flex-col h-full w-full bg-black font-sans">
       
       {/* Header */}
-      <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-surface/30 backdrop-blur-md z-10 select-none">
-        <div className="flex items-center gap-4">
-          {/* Back button for mobile responsive view */}
-          <Link href="/messages" className="md:hidden w-10 h-10 border border-white/10 bg-white/5 hover:bg-white/10 text-on-surface-variant rounded-xl flex items-center justify-center transition-colors shadow-sm shrink-0">
-            <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+      <div className="px-4 py-3 border-b border-[#222] flex items-center justify-between bg-black z-10 select-none">
+        <div className="flex items-center gap-3">
+          {/* Back button */}
+          <Link href="/messages" className="text-white flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-[32px] font-light">arrow_back_ios_new</span>
           </Link>
 
-          <div className="relative w-12 h-12 shrink-0">
+          <div className="relative w-10 h-10 shrink-0 ml-1">
             {partnerAvatarUrl ? (
               <img
                 src={partnerAvatarUrl}
                 alt={partnerName}
-                className="w-12 h-12 rounded-full object-cover border-2 border-white/10"
+                className="w-10 h-10 rounded-full object-cover"
               />
             ) : (
-              <div className={`w-12 h-12 rounded-full bg-gradient-to-tr ${getAvatarColor(partnerName)} flex items-center justify-center font-bold text-[15px] border-2 border-white/10 select-none`}>
+              <div className={`w-10 h-10 rounded-full bg-gradient-to-tr ${getAvatarColor(partnerName)} flex items-center justify-center font-bold text-[14px] select-none`}>
                 {getInitials(partnerName)}
               </div>
             )}
-            <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-[#0a0a0c] shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
+            <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-black"></div>
           </div>
 
-          <div className="flex flex-col">
-            <div className="flex items-center gap-2">
-              <h3 className="font-bold text-[16px] text-on-surface leading-tight">
-                {partnerName}
-              </h3>
-              <div className="border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 uppercase tracking-wider">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
-                Online
-              </div>
-            </div>
-            <span className="text-[13px] text-on-surface-variant font-medium">
-              @{partnerUsername || partnerName.toLowerCase().replace(/\s+/g, '')}
-            </span>
-          </div>
+          <h3 className="font-bold text-[22px] text-white leading-tight ml-2 tracking-wide">
+            {partnerName}
+          </h3>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-5 pr-2">
           {/* Call Actions */}
           <button 
             onClick={() => startCall('audio')}
-            className="w-10 h-10 border border-white/10 bg-white/5 hover:bg-white/10 text-on-surface-variant hover:text-primary rounded-xl flex items-center justify-center transition-colors shadow-sm cursor-pointer"
-            title="Appel audio"
+            className="text-white flex items-center justify-center cursor-pointer"
           >
-            <span className="material-symbols-outlined text-[20px]">call</span>
+            <span className="material-symbols-outlined text-[28px]" style={{fontVariationSettings: "'FILL' 1"}}>call</span>
           </button>
           <button 
             onClick={() => startCall('video')}
-            className="w-10 h-10 border border-white/10 bg-white/5 hover:bg-white/10 text-on-surface-variant hover:text-primary rounded-xl flex items-center justify-center transition-colors shadow-sm cursor-pointer"
-            title="Appel vidéo"
+            className="text-white flex items-center justify-center cursor-pointer"
           >
-            <span className="material-symbols-outlined text-[20px]">videocam</span>
+            <span className="material-symbols-outlined text-[32px]" style={{fontVariationSettings: "'FILL' 1"}}>videocam</span>
           </button>
-
-          <button className="h-10 px-4 border border-white/10 bg-white/5 hover:bg-white/10 text-on-surface-variant hover:text-on-surface rounded-xl text-[13px] font-semibold transition-colors shadow-sm flex items-center justify-center cursor-pointer">
-            Épingle
-          </button>
-          <Link 
-            href={`/u/${partnerUsername || partnerId}`}
-            className="h-10 px-5 bg-primary hover:brightness-110 text-on-primary-container rounded-xl text-[13px] font-bold transition-colors shadow-[0_0_15px_rgba(77,142,255,0.2)] flex items-center justify-center cursor-pointer"
-          >
-            Voir profil
-          </Link>
         </div>
       </div>
 
       {/* Messages Area */}
-      <div className="flex-grow overflow-y-auto px-6 py-6 space-y-6 flex flex-col bg-transparent scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+      <div className="flex-grow overflow-y-auto space-y-4 flex flex-col bg-black pb-4 scrollbar-thin scrollbar-thumb-[#333] scrollbar-track-transparent">
         {loading ? (
           <div className="flex-grow flex items-center justify-center">
-            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-8 h-8 border-2 border-[#f23c57] border-t-transparent rounded-full animate-spin"></div>
           </div>
         ) : messages.length === 0 ? (
-          <div className="flex-grow flex flex-col items-center justify-center text-on-surface-variant/60">
-            <span className="material-symbols-outlined text-[56px] mb-4 text-on-surface-variant/40 animate-[wiggle_2s_ease-in-out_infinite]">waving_hand</span>
-            <p className="text-sm font-semibold tracking-wide">Say hello to {partnerName}!</p>
+          <div className="flex-grow flex flex-col items-center justify-center pt-8">
+            <p className="text-[11px] font-bold text-[#666] tracking-widest uppercase">AUJOURD'HUI</p>
           </div>
         ) : (
           messages.map((msg) => {
             const isMe = msg.sender_id === currentUserId;
             
-            return (
-              <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                {/* Message Header (Sender name + timestamp) */}
-                <div className={`flex items-baseline mb-1.5 px-1 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-                  <span className="text-[12px] font-bold text-on-surface">
-                    {isMe ? 'You' : msg.sender_name || partnerName}
-                  </span>
-                  <span className={`text-[10px] text-on-surface-variant/70 font-medium tracking-wider uppercase ${isMe ? 'mr-2' : 'ml-2'}`}>
-                    {msg.created_at}
-                  </span>
-                </div>
+              <div key={msg.id} className="w-full flex flex-col mb-1 group">
+                
+                {/* Time header above groups of messages (Simplified logic here) */}
+                {msg.id === messages[0]?.id && (
+                  <div className="text-center my-6">
+                    <span className="text-[11px] font-bold text-[#666] tracking-widest uppercase">AUJOURD'HUI</span>
+                  </div>
+                )}
 
-                <div className={`flex gap-3 items-end max-w-[85%] md:max-w-[75%] ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-                  {/* Avatar for received messages */}
-                  {!isMe && (
-                    <div className="shrink-0 mb-1">
-                      {partnerAvatarUrl ? (
-                        <img
-                          src={partnerAvatarUrl}
-                          alt={partnerName}
-                          className="w-9 h-9 rounded-full object-cover border border-white/10"
-                        />
-                      ) : (
-                        <div className={`w-9 h-9 rounded-full bg-gradient-to-tr ${getAvatarColor(partnerName)} flex items-center justify-center font-bold text-[12px] border border-white/10 select-none`}>
-                          {getInitials(partnerName)}
-                        </div>
-                      )}
+                {isMe ? (
+                  /* Snapchat style "Moi" Bubble */
+                  <div className="flex flex-col w-full pl-2 pr-4">
+                    <span className="text-[#f23c57] text-[13px] font-bold mb-1 ml-1 select-none tracking-wide">Moi</span>
+                    <div className="flex w-full">
+                      <div className="w-1.5 bg-[#f23c57] shrink-0 rounded-l-sm"></div>
+                      <div className="bg-[#1c1c1e] text-white px-3 py-3 rounded-r-md min-h-[44px] flex-grow relative overflow-hidden">
+                        
+                        {msg.isPdf ? (
+                           <div className="flex items-center gap-3">
+                             <span className="material-symbols-outlined text-white text-[24px]">picture_as_pdf</span>
+                             <div className="min-w-0">
+                               <h4 className="text-[14px] font-bold text-white truncate">{msg.content}</h4>
+                             </div>
+                           </div>
+                        ) : (msg.content === '__CALL_INITIATED_AUDIO__' || msg.content === '__CALL_INITIATED_VIDEO__') ? (
+                          <div className="flex items-center gap-3">
+                            <span className="material-symbols-outlined text-[20px]">
+                              {msg.content === '__CALL_INITIATED_VIDEO__' ? 'videocam' : 'call'}
+                            </span>
+                            <span className="text-[15px] font-medium">Vous avez lancé un appel</span>
+                          </div>
+                        ) : (
+                          <p className="whitespace-pre-wrap text-[15px] leading-relaxed font-medium">{msg.content}</p>
+                        )}
+                        
+                      </div>
                     </div>
-                  )}
-
-                  {/* Message Bubble content */}
-                  <div className="relative group">
-                    {msg.isPdf ? (
-                      /* PDF Attachment Card */
-                      <div className="bg-surface/50 border border-white/10 rounded-2xl p-4 flex items-center justify-between gap-4 shadow-lg w-72 md:w-80 backdrop-blur-sm">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 bg-error/10 rounded-xl flex items-center justify-center border border-error/20 shrink-0">
-                            <span className="material-symbols-outlined text-error text-[24px]">picture_as_pdf</span>
+                  </div>
+                ) : (
+                  /* Snapchat style Partner Bubble */
+                  <div className="flex flex-col w-full pl-2 pr-4 mt-1">
+                    {/* Note: Partner name usually not shown above every message in 1on1 snap, just the line */}
+                    <div className="flex w-full">
+                      <div className="w-1.5 bg-[#00a6ff] shrink-0 rounded-l-sm"></div>
+                      <div className="bg-[#1c1c1e] text-white px-3 py-3 rounded-r-md min-h-[44px] flex-grow relative overflow-hidden">
+                        
+                        {msg.isPdf ? (
+                           <div className="flex items-center gap-3">
+                             <span className="material-symbols-outlined text-white text-[24px]">picture_as_pdf</span>
+                             <div className="min-w-0">
+                               <h4 className="text-[14px] font-bold text-white truncate">{msg.content}</h4>
+                             </div>
+                           </div>
+                        ) : (msg.content === '__CALL_INITIATED_AUDIO__' || msg.content === '__CALL_INITIATED_VIDEO__') ? (
+                          <div className="flex items-center gap-3">
+                            <span className="material-symbols-outlined text-[20px]">
+                              {msg.content === '__CALL_INITIATED_VIDEO__' ? 'videocam' : 'call'}
+                            </span>
+                            <span className="text-[15px] font-medium">Appel manqué</span>
                           </div>
-                          <div className="min-w-0">
-                            <h4 className="text-[14px] font-bold text-on-surface truncate">
-                              {msg.content}
-                            </h4>
-                            <p className="text-[12px] text-on-surface-variant font-semibold mt-0.5">
-                              {msg.fileSize}
-                            </p>
-                          </div>
-                        </div>
-                        <button className="text-on-surface-variant hover:text-primary transition-colors p-2 hover:bg-white/5 rounded-xl cursor-pointer">
-                          <span className="material-symbols-outlined text-[22px]">cloud_download</span>
-                        </button>
+                        ) : (
+                          <p className="whitespace-pre-wrap text-[15px] leading-relaxed font-medium">{msg.content}</p>
+                        )}
+                        
                       </div>
-                    ) : (msg.content === '__CALL_INITIATED_AUDIO__' || msg.content === '__CALL_INITIATED_VIDEO__') ? (
-                      /* Call Log Bubble */
-                      <div 
-                        className={`px-5 py-3 rounded-2xl text-[13px] font-semibold flex items-center gap-3 select-none ${
-                          isMe 
-                            ? 'bg-primary/10 text-primary border border-primary/20' 
-                            : 'glass-panel text-on-surface-variant border border-white/5'
-                        }`}
-                      >
-                        <span className="material-symbols-outlined text-[20px]">
-                          {msg.content === '__CALL_INITIATED_VIDEO__' ? 'videocam' : 'call'}
-                        </span>
-                        <span>
-                          {isMe 
-                            ? (msg.content === '__CALL_INITIATED_VIDEO__' ? 'Vous avez lancé un appel vidéo' : 'Vous avez lancé un appel vocal') 
-                            : (msg.content === '__CALL_INITIATED_VIDEO__' ? 'Appel vidéo manqué' : 'Appel vocal manqué')
-                          }
-                        </span>
-                      </div>
-                    ) : (
-                      /* Standard bubble */
-                      <div 
-                        className={`px-5 py-3.5 rounded-2xl text-[15px] leading-relaxed shadow-sm ${
-                          isMe 
-                            ? 'bg-gradient-to-br from-primary to-primary-container text-on-primary-container rounded-br-sm' 
-                            : 'glass-panel text-on-surface border border-white/5 rounded-bl-sm bg-white/5'
-                        }`}
-                      >
-                        <p className="whitespace-pre-wrap">{msg.content}</p>
-                      </div>
-                    )}
+                    </div>
+                  </div>
+                )}
 
                     {/* Reactions */}
                     {msg.reactions && msg.reactions.length > 0 && (
-                      <div className="absolute -bottom-3 right-3 flex items-center gap-0.5 bg-surface border border-white/10 rounded-full px-2 py-0.5 shadow-md text-[14px] select-none">
+                      <div className="absolute -bottom-3 right-3 flex items-center gap-0.5 bg-[#1c1c1e] rounded-full px-2 py-0.5 text-[14px] select-none border border-black">
                         {msg.reactions.map((emoji, idx) => (
                           <span key={idx}>{emoji}</span>
                         ))}
                       </div>
                     )}
-                  </div>
-                </div>
               </div>
             );
           })
@@ -372,9 +331,16 @@ export default function ChatWindow({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
-      <div className="p-4 md:p-6 bg-transparent border-t border-white/5 flex-shrink-0 select-none">
-        <form onSubmit={sendMessage} className="bg-surface/50 backdrop-blur-md border border-white/10 rounded-2xl p-3 shadow-lg flex flex-col focus-within:border-primary/50 focus-within:bg-surface/80 transition-all">
+      {/* Input Area (Snapchat Style) */}
+      <div className="px-3 pb-8 pt-3 bg-black flex items-center gap-3 shrink-0 select-none border-t border-[#111]">
+        
+        {/* Camera Button */}
+        <button className="w-10 h-10 bg-white rounded-full flex items-center justify-center shrink-0 cursor-pointer shadow-[0_0_8px_rgba(255,255,255,0.1)]">
+          <span className="material-symbols-outlined text-black text-[22px] font-bold" style={{fontVariationSettings: "'FILL' 1"}}>photo_camera</span>
+        </button>
+
+        {/* Input Pill */}
+        <form onSubmit={sendMessage} className="flex-grow flex items-center bg-transparent border border-[#444] rounded-full px-4 py-1.5 min-h-[42px] focus-within:border-[#666] transition-colors relative">
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -384,66 +350,69 @@ export default function ChatWindow({
                 sendMessage(e);
               }
             }}
-            placeholder="Écrivez un message..."
-            className="w-full bg-transparent border-none outline-none resize-none text-on-surface placeholder:text-on-surface-variant/40 text-[15px] min-h-[48px] px-3 py-2 scrollbar-none"
+            placeholder="Chat"
+            className="w-full bg-transparent border-none outline-none resize-none text-white placeholder:text-[#666] text-[17px] min-h-[24px] pt-1 pb-0 scrollbar-none font-medium"
             rows={1}
             maxLength={1000}
           />
-          <div className="flex justify-end items-center gap-3 mt-2 px-1">
-            <div className="relative mr-auto">
-              <button 
-                type="button" 
-                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                className="w-10 h-10 text-on-surface-variant hover:text-primary transition-colors rounded-xl hover:bg-white/5 flex items-center justify-center cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[24px]">sentiment_satisfied</span>
-              </button>
-              
-              {showEmojiPicker && (
-                <div className="absolute bottom-14 left-0 glass-panel border border-white/10 rounded-2xl p-4 shadow-2xl z-20 w-72 select-none animate-scale-in">
-                  <div className="flex justify-between items-center mb-3 pb-2 border-b border-white/5">
-                    <span className="text-[12px] font-bold text-on-surface-variant uppercase tracking-widest">Emojis</span>
-                    <button 
-                      type="button" 
-                      onClick={() => setShowEmojiPicker(false)}
-                      className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/10 text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">close</span>
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-8 gap-1 max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent pr-1">
-                    {POPULAR_EMOJIS.map((emoji) => (
-                      <button
-                        key={emoji}
-                        type="button"
-                        onClick={() => {
-                          setInput(prev => prev + emoji);
-                        }}
-                        className="text-[20px] hover:bg-white/10 p-1.5 rounded-lg transition-colors text-center cursor-pointer flex items-center justify-center transform active:scale-90"
-                      >
-                        {emoji}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-            <button 
-              type="button"
-              className="w-10 h-10 text-on-surface-variant hover:text-secondary transition-colors rounded-xl hover:bg-white/5 flex items-center justify-center cursor-pointer"
-              title="Ajouter un fichier"
-            >
-              <span className="material-symbols-outlined text-[22px]">attach_file</span>
+          {input.length === 0 ? (
+            <button type="button" className="shrink-0 text-[#ccc] hover:text-white transition-colors cursor-pointer pl-2">
+              <span className="material-symbols-outlined text-[26px]">mic</span>
             </button>
-            <button 
-              type="submit" 
-              disabled={!input.trim()}
-              className="h-10 px-6 bg-gradient-to-r from-primary to-primary-container hover:brightness-110 text-on-primary-container rounded-xl text-[14px] font-bold transition-all shadow-[0_0_15px_rgba(77,142,255,0.2)] flex items-center justify-center cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-95"
-            >
+          ) : (
+            <button type="submit" className="shrink-0 text-[#f23c57] hover:text-[#ff0050] transition-colors cursor-pointer pl-2 font-bold text-[15px]">
               Envoyer
             </button>
-          </div>
+          )}
         </form>
+
+        {/* Right Icons */}
+        <div className="flex items-center gap-3 shrink-0 pb-0.5">
+          <div className="relative">
+            <button 
+              type="button" 
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              className="text-white hover:text-[#ccc] transition-colors flex items-center justify-center cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[28px]" style={{fontVariationSettings: "'FILL' 0, 'wght' 300"}}>sentiment_satisfied</span>
+            </button>
+            
+            {showEmojiPicker && (
+              <div className="absolute bottom-12 right-0 bg-[#1c1c1e] border border-[#333] rounded-2xl p-4 shadow-2xl z-20 w-72 select-none">
+                <div className="flex justify-between items-center mb-3 pb-2 border-b border-[#333]">
+                  <span className="text-[12px] font-bold text-[#888] uppercase tracking-widest">Emojis</span>
+                  <button 
+                    type="button" 
+                    onClick={() => setShowEmojiPicker(false)}
+                    className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#333] text-[#888] hover:text-white transition-colors cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">close</span>
+                  </button>
+                </div>
+                <div className="grid grid-cols-8 gap-1 max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-[#444] scrollbar-track-transparent pr-1">
+                  {POPULAR_EMOJIS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => setInput(prev => prev + emoji)}
+                      className="text-[20px] hover:bg-[#333] p-1.5 rounded-lg transition-colors text-center cursor-pointer"
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <button type="button" className="text-white hover:text-[#ccc] transition-colors flex items-center justify-center cursor-pointer">
+            <span className="material-symbols-outlined text-[28px]" style={{fontVariationSettings: "'FILL' 0, 'wght' 300"}}>photo_library</span>
+          </button>
+          
+          <button type="button" className="text-white hover:text-[#ccc] transition-colors flex items-center justify-center cursor-pointer">
+            <span className="material-symbols-outlined text-[28px]" style={{fontVariationSettings: "'FILL' 0, 'wght' 300"}}>sports_esports</span>
+          </button>
+        </div>
       </div>
     </div>
   );
