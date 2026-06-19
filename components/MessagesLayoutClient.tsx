@@ -89,179 +89,188 @@ export default function MessagesLayoutClient({
   }, []);
 
   return (
-    <div className="flex-grow pt-[80px] pb-0 flex overflow-hidden bg-white font-sans">
-      <div className="max-w-7xl mx-auto w-full flex h-[calc(100vh-80px)] bg-white shadow-sm border-x border-slate-200">
-        
-        {/* Sidebar Panel */}
-        <div className={`w-full md:w-80 lg:w-[360px] border-r border-slate-100 flex flex-col bg-white shrink-0 ${
-          isChatOpen ? 'hidden md:flex' : 'flex'
-        }`}>
+    <div className="flex-grow pt-[80px] pb-0 flex overflow-hidden bg-background font-sans relative">
+      {/* Abstract Background for PC */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 hidden md:block">
+        <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] animate-pulse"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] bg-tertiary/5 rounded-full blur-[150px] animate-pulse" style={{ animationDelay: '2s' }}></div>
+      </div>
+      <div className="absolute inset-0 tech-grid opacity-10 pointer-events-none mix-blend-overlay z-0 hidden md:block"></div>
+
+      <div className="max-w-[1400px] mx-auto w-full flex h-[calc(100vh-80px)] z-10 md:p-6 md:pb-0">
+        <div className="w-full flex bg-[#0a0a0c]/80 md:backdrop-blur-xl md:rounded-t-3xl md:border md:border-b-0 border-white/10 overflow-hidden md:shadow-[0_0_40px_rgba(0,0,0,0.5)]">
           
-          {/* Search Bar */}
-          <div className="p-4 pb-2">
-            <div className="relative flex items-center bg-white border border-slate-300 rounded-lg px-3 py-2 transition-colors">
-              <span className="material-symbols-outlined text-slate-400 text-[20px] mr-2 select-none">search</span>
-              <input
-                type="text"
-                placeholder="Search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-transparent border-none outline-none text-slate-900 placeholder:text-slate-400 text-[14px]"
-              />
+          {/* Sidebar Panel */}
+          <div className={`w-full md:w-80 lg:w-[380px] border-r border-white/10 flex flex-col bg-surface/30 shrink-0 ${
+            isChatOpen ? 'hidden md:flex' : 'flex'
+          }`}>
+            
+            {/* Search Bar */}
+            <div className="p-5 pb-3">
+              <div className="relative flex items-center bg-black/40 border border-white/10 rounded-xl px-4 py-3 transition-colors focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/50 shadow-inner">
+                <span className="material-symbols-outlined text-on-surface-variant text-[20px] mr-3 select-none">search</span>
+                <input
+                  type="text"
+                  placeholder="Search messages..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-transparent border-none outline-none text-on-surface placeholder:text-on-surface-variant/50 text-[14px]"
+                />
+              </div>
             </div>
-          </div>
 
-          {/* Active section */}
-          <div className="px-4 py-2 border-b border-slate-100">
-            <h3 className="text-[14px] font-bold text-slate-950 mb-3">Active</h3>
-            <div className="flex items-center gap-4 overflow-x-auto pb-2 scrollbar-none">
-              {partnerList
-                .filter(p => p.isOnline)
-                .map((partner) => {
-                  const isThisPartnerCalling = activeCallStatus !== 'idle' && activeCallPartnerId === partner.id;
-                  
-                  return (
-                    <Link
-                      key={`active-${partner.id}`}
-                      href={`/messages/${partner.id}`}
-                      className="flex flex-col items-center shrink-0 group relative cursor-pointer"
-                    >
-                      <div className="relative w-11 h-11">
-                        {partner.avatarUrl ? (
-                          <img
-                            src={partner.avatarUrl}
-                            alt={partner.displayName}
-                            className={`w-11 h-11 rounded-full object-cover border group-hover:scale-105 transition-transform ${
-                              isThisPartnerCalling ? 'border-emerald-500 scale-105 animate-pulse' : 'border-slate-100'
-                            }`}
-                          />
-                        ) : (
-                          <div className={`w-11 h-11 rounded-full bg-gradient-to-tr ${getAvatarColor(partner.displayName)} flex items-center justify-center font-bold text-[14px] border group-hover:scale-105 transition-transform select-none ${
-                            isThisPartnerCalling ? 'border-emerald-500 scale-105 animate-pulse' : 'border-slate-100'
-                          }`}>
-                            {getInitials(partner.displayName)}
-                          </div>
-                        )}
+            {/* Active section */}
+            <div className="px-5 py-3 border-b border-white/5">
+              <h3 className="text-[13px] font-bold text-on-surface-variant uppercase tracking-wider mb-4">Active Now</h3>
+              <div className="flex items-center gap-5 overflow-x-auto pb-2 scrollbar-none">
+                {partnerList
+                  .filter(p => p.isOnline)
+                  .map((partner) => {
+                    const isThisPartnerCalling = activeCallStatus !== 'idle' && activeCallPartnerId === partner.id;
+                    
+                    return (
+                      <Link
+                        key={`active-${partner.id}`}
+                        href={`/messages/${partner.id}`}
+                        className="flex flex-col items-center shrink-0 group relative cursor-pointer"
+                      >
+                        <div className="relative w-14 h-14">
+                          {partner.avatarUrl ? (
+                            <img
+                              src={partner.avatarUrl}
+                              alt={partner.displayName}
+                              className={`w-14 h-14 rounded-full object-cover border-[2px] group-hover:scale-105 transition-transform ${
+                                isThisPartnerCalling ? 'border-primary scale-105 animate-pulse' : 'border-white/10'
+                              }`}
+                            />
+                          ) : (
+                            <div className={`w-14 h-14 rounded-full bg-gradient-to-tr ${getAvatarColor(partner.displayName)} flex items-center justify-center font-bold text-[18px] border-[2px] group-hover:scale-105 transition-transform select-none ${
+                              isThisPartnerCalling ? 'border-primary scale-105 animate-pulse' : 'border-white/10'
+                            }`}>
+                              {getInitials(partner.displayName)}
+                            </div>
+                          )}
+                          
+                          {/* Concentric call wave rings */}
+                          {isThisPartnerCalling && (
+                            <div className="absolute inset-0 rounded-full border-2 border-primary animate-ping"></div>
+                          )}
+
+                          {partner.verified && (
+                            <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-primary rounded-full flex items-center justify-center border-2 border-[#0a0a0c] z-10">
+                              <span className="material-symbols-outlined text-background text-[10px] font-bold">check</span>
+                            </div>
+                          )}
+                          {!partner.verified && !isThisPartnerCalling && (
+                            <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-[#0a0a0c] z-10 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
+                          )}
+                        </div>
+                        <span className="text-[11px] font-medium text-on-surface-variant mt-2 truncate w-14 text-center group-hover:text-on-surface transition-colors">
+                          {partner.displayName.split(' ')[0]}
+                        </span>
+                      </Link>
+                    );
+                  })}
+              </div>
+            </div>
+
+            {/* Messages Header */}
+            <div className="px-5 pt-5 pb-3 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <h3 className="text-[16px] font-bold text-on-surface">Recent</h3>
+                <span className="bg-primary/20 text-primary border border-primary/30 text-[11px] font-bold px-2 py-0.5 rounded-full">
+                  {partnerList.length}
+                </span>
+              </div>
+              <button className="w-9 h-9 border border-white/10 bg-white/5 hover:bg-white/10 text-on-surface-variant hover:text-on-surface rounded-xl flex items-center justify-center transition-colors shadow-sm cursor-pointer">
+                <span className="material-symbols-outlined text-[20px]">edit_square</span>
+              </button>
+            </div>
+
+            {/* Contact List */}
+            <div className="flex-grow overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+              {filteredPartners.length === 0 ? (
+                <div className="p-8 text-center text-on-surface-variant flex flex-col items-center justify-center h-48">
+                  <span className="material-symbols-outlined text-[36px] mb-3 text-on-surface-variant/50">chat_bubble</span>
+                  <p className="text-sm">No conversations found</p>
+                </div>
+              ) : (
+                <div className="flex flex-col p-2 space-y-1">
+                  {filteredPartners.map((partner) => {
+                    const isSelected = currentChatId === partner.id;
+                    const isThisPartnerCalling = activeCallStatus !== 'idle' && activeCallPartnerId === partner.id;
+
+                    return (
+                      <Link
+                        key={partner.id}
+                        href={`/messages/${partner.id}`}
+                        className={`p-3 rounded-2xl flex items-center gap-4 transition-all cursor-pointer ${
+                          isSelected 
+                            ? 'bg-primary/10 border border-primary/20 shadow-[inset_0_0_20px_rgba(77,142,255,0.05)]' 
+                            : 'hover:bg-white/5 border border-transparent'
+                        }`}
+                      >
+                        <div className="relative w-12 h-12 shrink-0">
+                          {partner.avatarUrl ? (
+                            <img
+                              src={partner.avatarUrl}
+                              alt={partner.displayName}
+                              className={`w-12 h-12 rounded-full object-cover border-[2px] ${
+                                isThisPartnerCalling ? 'border-primary animate-pulse' : (isSelected ? 'border-primary/50' : 'border-transparent')
+                              }`}
+                            />
+                          ) : (
+                            <div className={`w-12 h-12 rounded-full bg-gradient-to-tr ${getAvatarColor(partner.displayName)} flex items-center justify-center font-bold text-[15px] border-[2px] select-none ${
+                              isThisPartnerCalling ? 'border-primary animate-pulse' : (isSelected ? 'border-primary/50' : 'border-transparent')
+                            }`}>
+                              {getInitials(partner.displayName)}
+                            </div>
+                          )}
+                          {isThisPartnerCalling && (
+                            <div className="absolute inset-0 rounded-full border-2 border-primary animate-ping"></div>
+                          )}
+                          {partner.isOnline && !isThisPartnerCalling && (
+                            <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-[#0a0a0c] shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+                          )}
+                        </div>
                         
-                        {/* Concentric call wave rings */}
-                        {isThisPartnerCalling && (
-                          <div className="absolute inset-0 rounded-full border-2 border-emerald-500 animate-ping"></div>
-                        )}
+                        <div className="flex-grow min-w-0">
+                          <div className="flex justify-between items-center mb-1">
+                            <h4 className={`text-[14px] font-bold truncate pr-2 ${isSelected ? 'text-primary' : 'text-on-surface'}`}>
+                              {partner.displayName}
+                            </h4>
+                            <span className={`text-[10px] shrink-0 font-semibold uppercase tracking-wider ${isSelected ? 'text-primary/80' : 'text-on-surface-variant/60'}`}>
+                              {partner.latestMessageAt}
+                            </span>
+                          </div>
+                          <p className={`text-[13px] truncate ${isSelected ? 'text-on-surface font-medium' : 'text-on-surface-variant'}`}>
+                            {partner.latestMessageSnippet}
+                          </p>
+                        </div>
 
-                        {partner.verified && (
-                          <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center border border-white z-10">
-                            <span className="material-symbols-outlined text-white text-[9px] font-bold">check</span>
+                        {/* Concentric active call pulse next to username */}
+                        {isThisPartnerCalling && (
+                          <div className="relative flex items-center justify-center w-8 h-8 rounded-full bg-primary text-background shadow-[0_0_15px_rgba(77,142,255,0.5)] animate-pulse shrink-0 ml-auto">
+                            <span className="absolute inset-0 rounded-full bg-primary/40 animate-ping"></span>
+                            <span className="material-symbols-outlined text-[16px] font-bold">call</span>
                           </div>
                         )}
-                        {!partner.verified && !isThisPartnerCalling && (
-                          <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white z-10"></div>
-                        )}
-                      </div>
-                    </Link>
-                  );
-                })}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Messages Header */}
-          <div className="px-4 pt-4 pb-2 flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <h3 className="text-[16px] font-bold text-slate-950">Discussions</h3>
-              <span className="bg-slate-100 text-slate-700 text-[11px] font-semibold px-2 py-0.5 rounded-full">
-                {partnerList.length}
-              </span>
-            </div>
-            <button className="w-9 h-9 border border-slate-200 bg-white hover:bg-slate-50 text-slate-500 rounded-lg flex items-center justify-center transition-colors shadow-sm cursor-pointer">
-              <span className="material-symbols-outlined text-[20px]">edit_square</span>
-            </button>
+          {/* Main Conversation Panel */}
+          <div className={`flex-1 flex flex-col relative bg-transparent ${
+            isChatOpen ? 'flex' : 'hidden md:flex'
+          }`}>
+            {children}
           </div>
 
-          {/* Contact List */}
-          <div className="flex-grow overflow-y-auto">
-            {filteredPartners.length === 0 ? (
-              <div className="p-8 text-center text-slate-400 flex flex-col items-center justify-center h-48">
-                <span className="material-symbols-outlined text-[36px] mb-2 text-slate-300">chat_bubble</span>
-                <p className="text-sm">No conversations found</p>
-              </div>
-            ) : (
-              <div className="flex flex-col">
-                {filteredPartners.map((partner) => {
-                  const isSelected = currentChatId === partner.id;
-                  const isThisPartnerCalling = activeCallStatus !== 'idle' && activeCallPartnerId === partner.id;
-
-                  return (
-                    <Link
-                      key={partner.id}
-                      href={`/messages/${partner.id}`}
-                      className={`px-4 py-3.5 border-b border-slate-50 flex items-start gap-3 transition-colors cursor-pointer ${
-                        isSelected 
-                          ? 'bg-slate-50 border-l-[3px] border-l-blue-600 pl-[13px]' 
-                          : 'hover:bg-slate-50/50'
-                      }`}
-                    >
-                      <div className="relative w-11 h-11 shrink-0 mt-0.5">
-                        {partner.avatarUrl ? (
-                          <img
-                            src={partner.avatarUrl}
-                            alt={partner.displayName}
-                            className={`w-11 h-11 rounded-full object-cover border ${
-                              isThisPartnerCalling ? 'border-emerald-500 scale-105 animate-pulse' : 'border-slate-100'
-                            }`}
-                          />
-                        ) : (
-                          <div className={`w-11 h-11 rounded-full bg-gradient-to-tr ${getAvatarColor(partner.displayName)} flex items-center justify-center font-bold text-[14px] border select-none ${
-                            isThisPartnerCalling ? 'border-emerald-500 scale-105 animate-pulse' : 'border-slate-100'
-                          }`}>
-                            {getInitials(partner.displayName)}
-                          </div>
-                        )}
-                        {isThisPartnerCalling && (
-                          <div className="absolute inset-0 rounded-full border-2 border-emerald-500 animate-ping"></div>
-                        )}
-                        {partner.isOnline && !isThisPartnerCalling && (
-                          <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
-                        )}
-                      </div>
-                      
-                      <div className="flex-grow min-w-0">
-                        <div className="flex justify-between items-baseline mb-0.5">
-                          <h4 className="text-[14px] font-bold text-slate-900 truncate pr-2">
-                            {partner.displayName}
-                          </h4>
-                          <span className="text-[11px] text-slate-400 shrink-0 font-medium">
-                            {partner.latestMessageAt}
-                          </span>
-                        </div>
-                        <p className="text-[12px] text-slate-400 font-medium mb-1">
-                          @{partner.username}
-                        </p>
-                        <p className="text-[13px] text-slate-500 truncate leading-snug">
-                          {partner.latestMessageSnippet}
-                        </p>
-                      </div>
-
-                      {/* Concentric active call pulse next to username */}
-                      {isThisPartnerCalling && (
-                        <div className="relative flex items-center justify-center w-7 h-7 rounded-full bg-emerald-500 text-white shadow-[0_0_12px_rgba(16,185,129,0.55)] animate-pulse shrink-0 ml-auto self-center">
-                          <span className="absolute inset-0 rounded-full bg-emerald-500/40 animate-ping"></span>
-                          <span className="material-symbols-outlined text-[14px] font-bold">call</span>
-                        </div>
-                      )}
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
-          </div>
         </div>
-
-        {/* Main Conversation Panel */}
-        <div className={`flex-1 flex flex-col relative bg-white ${
-          isChatOpen ? 'flex' : 'hidden md:flex'
-        }`}>
-          {children}
-        </div>
-
       </div>
     </div>
   );

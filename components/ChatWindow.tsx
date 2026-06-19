@@ -185,86 +185,86 @@ export default function ChatWindow({
   };
 
   return (
-    <div className="flex flex-col h-full w-full bg-white font-sans">
+    <div className="flex flex-col h-full w-full bg-transparent font-sans">
       
       {/* Header */}
-      <div className="px-6 py-3 border-b border-slate-100 flex items-center justify-between bg-white z-10 select-none">
-        <div className="flex items-center gap-3">
+      <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-surface/30 backdrop-blur-md z-10 select-none">
+        <div className="flex items-center gap-4">
           {/* Back button for mobile responsive view */}
-          <Link href="/messages" className="md:hidden w-9 h-9 border border-slate-200 bg-white hover:bg-slate-50 text-slate-500 rounded-lg flex items-center justify-center transition-colors shadow-sm mr-1 shrink-0">
+          <Link href="/messages" className="md:hidden w-10 h-10 border border-white/10 bg-white/5 hover:bg-white/10 text-on-surface-variant rounded-xl flex items-center justify-center transition-colors shadow-sm shrink-0">
             <span className="material-symbols-outlined text-[20px]">arrow_back</span>
           </Link>
 
-          <div className="relative w-11 h-11 shrink-0">
+          <div className="relative w-12 h-12 shrink-0">
             {partnerAvatarUrl ? (
               <img
                 src={partnerAvatarUrl}
                 alt={partnerName}
-                className="w-11 h-11 rounded-full object-cover border border-slate-100"
+                className="w-12 h-12 rounded-full object-cover border-2 border-white/10"
               />
             ) : (
-              <div className={`w-11 h-11 rounded-full bg-gradient-to-tr ${getAvatarColor(partnerName)} flex items-center justify-center font-bold text-[14px] border border-slate-100 select-none`}>
+              <div className={`w-12 h-12 rounded-full bg-gradient-to-tr ${getAvatarColor(partnerName)} flex items-center justify-center font-bold text-[15px] border-2 border-white/10 select-none`}>
                 {getInitials(partnerName)}
               </div>
             )}
-            <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+            <div className="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-[#0a0a0c] shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
           </div>
 
           <div className="flex flex-col">
             <div className="flex items-center gap-2">
-              <h3 className="font-bold text-[15px] text-slate-900 leading-tight">
+              <h3 className="font-bold text-[16px] text-on-surface leading-tight">
                 {partnerName}
               </h3>
-              <div className="border border-green-200 bg-green-50 text-green-700 text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+              <div className="border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 uppercase tracking-wider">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
                 Online
               </div>
             </div>
-            <span className="text-[12px] text-slate-400 font-medium">
+            <span className="text-[13px] text-on-surface-variant font-medium">
               @{partnerUsername || partnerName.toLowerCase().replace(/\s+/g, '')}
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Snapchat-style Call Actions */}
+        <div className="flex items-center gap-2.5">
+          {/* Call Actions */}
           <button 
             onClick={() => startCall('audio')}
-            className="w-9 h-9 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 rounded-lg flex items-center justify-center transition-colors shadow-sm cursor-pointer"
+            className="w-10 h-10 border border-white/10 bg-white/5 hover:bg-white/10 text-on-surface-variant hover:text-primary rounded-xl flex items-center justify-center transition-colors shadow-sm cursor-pointer"
             title="Appel audio"
           >
             <span className="material-symbols-outlined text-[20px]">call</span>
           </button>
           <button 
             onClick={() => startCall('video')}
-            className="w-9 h-9 border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 rounded-lg flex items-center justify-center transition-colors shadow-sm cursor-pointer"
+            className="w-10 h-10 border border-white/10 bg-white/5 hover:bg-white/10 text-on-surface-variant hover:text-primary rounded-xl flex items-center justify-center transition-colors shadow-sm cursor-pointer"
             title="Appel vidéo"
           >
             <span className="material-symbols-outlined text-[20px]">videocam</span>
           </button>
 
-          <button className="h-9 px-4 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 rounded-lg text-[13px] font-semibold transition-colors shadow-sm flex items-center justify-center cursor-pointer">
+          <button className="h-10 px-4 border border-white/10 bg-white/5 hover:bg-white/10 text-on-surface-variant hover:text-on-surface rounded-xl text-[13px] font-semibold transition-colors shadow-sm flex items-center justify-center cursor-pointer">
             Épingle
           </button>
           <Link 
             href={`/u/${partnerUsername || partnerId}`}
-            className="h-9 px-4 bg-[#0062ff] hover:bg-blue-700 text-white rounded-lg text-[13px] font-semibold transition-colors shadow-sm flex items-center justify-center cursor-pointer"
+            className="h-10 px-5 bg-primary hover:brightness-110 text-on-primary-container rounded-xl text-[13px] font-bold transition-colors shadow-[0_0_15px_rgba(77,142,255,0.2)] flex items-center justify-center cursor-pointer"
           >
-            View profile
+            Voir profil
           </Link>
         </div>
       </div>
 
       {/* Messages Area */}
-      <div className="flex-grow overflow-y-auto px-6 py-6 space-y-5 flex flex-col bg-white">
+      <div className="flex-grow overflow-y-auto px-6 py-6 space-y-6 flex flex-col bg-transparent scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
         {loading ? (
           <div className="flex-grow flex items-center justify-center">
-            <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
           </div>
         ) : messages.length === 0 ? (
-          <div className="flex-grow flex flex-col items-center justify-center text-slate-400">
-            <span className="material-symbols-outlined text-[48px] mb-2 text-slate-300">waving_hand</span>
-            <p className="text-sm font-medium">Say hello to {partnerName}!</p>
+          <div className="flex-grow flex flex-col items-center justify-center text-on-surface-variant/60">
+            <span className="material-symbols-outlined text-[56px] mb-4 text-on-surface-variant/40 animate-[wiggle_2s_ease-in-out_infinite]">waving_hand</span>
+            <p className="text-sm font-semibold tracking-wide">Say hello to {partnerName}!</p>
           </div>
         ) : (
           messages.map((msg) => {
@@ -273,27 +273,27 @@ export default function ChatWindow({
             return (
               <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                 {/* Message Header (Sender name + timestamp) */}
-                <div className={`flex items-baseline mb-1 px-1 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-                  <span className="text-[11px] font-bold text-slate-900">
+                <div className={`flex items-baseline mb-1.5 px-1 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                  <span className="text-[12px] font-bold text-on-surface">
                     {isMe ? 'You' : msg.sender_name || partnerName}
                   </span>
-                  <span className={`text-[10px] text-slate-400 font-medium ${isMe ? 'mr-2' : 'ml-2'}`}>
+                  <span className={`text-[10px] text-on-surface-variant/70 font-medium tracking-wider uppercase ${isMe ? 'mr-2' : 'ml-2'}`}>
                     {msg.created_at}
                   </span>
                 </div>
 
-                <div className={`flex gap-2 items-start max-w-[85%] md:max-w-[70%] ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                <div className={`flex gap-3 items-end max-w-[85%] md:max-w-[75%] ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
                   {/* Avatar for received messages */}
                   {!isMe && (
-                    <div className="shrink-0 mt-0.5">
+                    <div className="shrink-0 mb-1">
                       {partnerAvatarUrl ? (
                         <img
                           src={partnerAvatarUrl}
                           alt={partnerName}
-                          className="w-8 h-8 rounded-full object-cover border border-slate-100"
+                          className="w-9 h-9 rounded-full object-cover border border-white/10"
                         />
                       ) : (
-                        <div className={`w-8 h-8 rounded-full bg-gradient-to-tr ${getAvatarColor(partnerName)} flex items-center justify-center font-bold text-[11px] border border-slate-100 select-none`}>
+                        <div className={`w-9 h-9 rounded-full bg-gradient-to-tr ${getAvatarColor(partnerName)} flex items-center justify-center font-bold text-[12px] border border-white/10 select-none`}>
                           {getInitials(partnerName)}
                         </div>
                       )}
@@ -301,37 +301,37 @@ export default function ChatWindow({
                   )}
 
                   {/* Message Bubble content */}
-                  <div className="relative">
+                  <div className="relative group">
                     {msg.isPdf ? (
                       /* PDF Attachment Card */
-                      <div className="bg-white border border-slate-200 rounded-xl p-3.5 flex items-center justify-between gap-4 shadow-sm w-72 md:w-80">
+                      <div className="bg-surface/50 border border-white/10 rounded-2xl p-4 flex items-center justify-between gap-4 shadow-lg w-72 md:w-80 backdrop-blur-sm">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center border border-red-100 shrink-0">
-                            <span className="text-red-500 font-bold text-[11px] uppercase tracking-wider font-sans">Pdf</span>
+                          <div className="w-12 h-12 bg-error/10 rounded-xl flex items-center justify-center border border-error/20 shrink-0">
+                            <span className="material-symbols-outlined text-error text-[24px]">picture_as_pdf</span>
                           </div>
                           <div className="min-w-0">
-                            <h4 className="text-[13px] font-bold text-slate-900 truncate">
+                            <h4 className="text-[14px] font-bold text-on-surface truncate">
                               {msg.content}
                             </h4>
-                            <p className="text-[11px] text-slate-400 font-semibold mt-0.5">
+                            <p className="text-[12px] text-on-surface-variant font-semibold mt-0.5">
                               {msg.fileSize}
                             </p>
                           </div>
                         </div>
-                        <button className="text-slate-400 hover:text-slate-600 transition-colors p-1.5 hover:bg-slate-50 rounded-lg">
-                          <span className="material-symbols-outlined text-[20px]">cloud_download</span>
+                        <button className="text-on-surface-variant hover:text-primary transition-colors p-2 hover:bg-white/5 rounded-xl cursor-pointer">
+                          <span className="material-symbols-outlined text-[22px]">cloud_download</span>
                         </button>
                       </div>
                     ) : (msg.content === '__CALL_INITIATED_AUDIO__' || msg.content === '__CALL_INITIATED_VIDEO__') ? (
                       /* Call Log Bubble */
                       <div 
-                        className={`px-4 py-2.5 rounded-lg text-[13px] font-semibold flex items-center gap-2 select-none ${
+                        className={`px-5 py-3 rounded-2xl text-[13px] font-semibold flex items-center gap-3 select-none ${
                           isMe 
-                            ? 'bg-blue-700/40 text-blue-100 border border-blue-500/20' 
-                            : 'bg-slate-150 text-slate-700 border border-slate-200'
+                            ? 'bg-primary/10 text-primary border border-primary/20' 
+                            : 'glass-panel text-on-surface-variant border border-white/5'
                         }`}
                       >
-                        <span className="material-symbols-outlined text-[18px]">
+                        <span className="material-symbols-outlined text-[20px]">
                           {msg.content === '__CALL_INITIATED_VIDEO__' ? 'videocam' : 'call'}
                         </span>
                         <span>
@@ -344,10 +344,10 @@ export default function ChatWindow({
                     ) : (
                       /* Standard bubble */
                       <div 
-                        className={`px-4 py-2.5 rounded-lg text-[14px] leading-relaxed ${
+                        className={`px-5 py-3.5 rounded-2xl text-[15px] leading-relaxed shadow-sm ${
                           isMe 
-                            ? 'bg-blue-600 text-white' 
-                            : 'bg-slate-100 text-slate-800'
+                            ? 'bg-gradient-to-br from-primary to-primary-container text-on-primary-container rounded-br-sm' 
+                            : 'glass-panel text-on-surface border border-white/5 rounded-bl-sm bg-white/5'
                         }`}
                       >
                         <p className="whitespace-pre-wrap">{msg.content}</p>
@@ -356,7 +356,7 @@ export default function ChatWindow({
 
                     {/* Reactions */}
                     {msg.reactions && msg.reactions.length > 0 && (
-                      <div className="absolute -bottom-2 right-2 flex items-center gap-0.5 bg-white border border-slate-150 rounded-full px-1.5 py-0.5 shadow-sm text-[12px] select-none">
+                      <div className="absolute -bottom-3 right-3 flex items-center gap-0.5 bg-surface border border-white/10 rounded-full px-2 py-0.5 shadow-md text-[14px] select-none">
                         {msg.reactions.map((emoji, idx) => (
                           <span key={idx}>{emoji}</span>
                         ))}
@@ -373,8 +373,8 @@ export default function ChatWindow({
       </div>
 
       {/* Input Area */}
-      <div className="p-4 bg-white border-t border-slate-100 flex-shrink-0 select-none">
-        <form onSubmit={sendMessage} className="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm flex flex-col focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-400 transition-colors">
+      <div className="p-4 md:p-6 bg-transparent border-t border-white/5 flex-shrink-0 select-none">
+        <form onSubmit={sendMessage} className="bg-surface/50 backdrop-blur-md border border-white/10 rounded-2xl p-3 shadow-lg flex flex-col focus-within:border-primary/50 focus-within:bg-surface/80 transition-all">
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -384,34 +384,34 @@ export default function ChatWindow({
                 sendMessage(e);
               }
             }}
-            placeholder="Send a message"
-            className="w-full bg-transparent border-none outline-none resize-none text-slate-800 placeholder:text-slate-400 text-[14px] min-h-[44px] px-2 py-1"
+            placeholder="Écrivez un message..."
+            className="w-full bg-transparent border-none outline-none resize-none text-on-surface placeholder:text-on-surface-variant/40 text-[15px] min-h-[48px] px-3 py-2 scrollbar-none"
             rows={1}
             maxLength={1000}
           />
-          <div className="flex justify-end items-center gap-2 mt-1">
+          <div className="flex justify-end items-center gap-3 mt-2 px-1">
             <div className="relative mr-auto">
               <button 
                 type="button" 
                 onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                className="w-9 h-9 text-slate-400 hover:text-slate-600 transition-colors rounded-lg hover:bg-slate-50 flex items-center justify-center cursor-pointer"
+                className="w-10 h-10 text-on-surface-variant hover:text-primary transition-colors rounded-xl hover:bg-white/5 flex items-center justify-center cursor-pointer"
               >
-                <span className="material-symbols-outlined text-[20px]">sentiment_satisfied</span>
+                <span className="material-symbols-outlined text-[24px]">sentiment_satisfied</span>
               </button>
               
               {showEmojiPicker && (
-                <div className="absolute bottom-11 left-0 bg-white border border-slate-200 rounded-xl p-3 shadow-lg z-20 w-64 select-none">
-                  <div className="flex justify-between items-center mb-2 pb-1 border-b border-slate-100">
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Emojis</span>
+                <div className="absolute bottom-14 left-0 glass-panel border border-white/10 rounded-2xl p-4 shadow-2xl z-20 w-72 select-none animate-scale-in">
+                  <div className="flex justify-between items-center mb-3 pb-2 border-b border-white/5">
+                    <span className="text-[12px] font-bold text-on-surface-variant uppercase tracking-widest">Emojis</span>
                     <button 
                       type="button" 
                       onClick={() => setShowEmojiPicker(false)}
-                      className="text-slate-400 hover:text-slate-600 text-xs font-semibold cursor-pointer"
+                      className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-white/10 text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
                     >
-                      Close
+                      <span className="material-symbols-outlined text-[16px]">close</span>
                     </button>
                   </div>
-                  <div className="grid grid-cols-8 gap-1 max-h-40 overflow-y-auto scrollbar-none">
+                  <div className="grid grid-cols-8 gap-1 max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent pr-1">
                     {POPULAR_EMOJIS.map((emoji) => (
                       <button
                         key={emoji}
@@ -419,7 +419,7 @@ export default function ChatWindow({
                         onClick={() => {
                           setInput(prev => prev + emoji);
                         }}
-                        className="text-[18px] hover:bg-slate-100 p-1 rounded-md transition-colors text-center cursor-pointer flex items-center justify-center"
+                        className="text-[20px] hover:bg-white/10 p-1.5 rounded-lg transition-colors text-center cursor-pointer flex items-center justify-center transform active:scale-90"
                       >
                         {emoji}
                       </button>
@@ -429,10 +429,18 @@ export default function ChatWindow({
               )}
             </div>
             <button 
-              type="submit" 
-              className="h-9 px-5 bg-[#0062ff] hover:bg-[#0052d4] text-white rounded-lg text-[13px] font-semibold transition-colors flex items-center justify-center cursor-pointer"
+              type="button"
+              className="w-10 h-10 text-on-surface-variant hover:text-secondary transition-colors rounded-xl hover:bg-white/5 flex items-center justify-center cursor-pointer"
+              title="Ajouter un fichier"
             >
-              Send
+              <span className="material-symbols-outlined text-[22px]">attach_file</span>
+            </button>
+            <button 
+              type="submit" 
+              disabled={!input.trim()}
+              className="h-10 px-6 bg-gradient-to-r from-primary to-primary-container hover:brightness-110 text-on-primary-container rounded-xl text-[14px] font-bold transition-all shadow-[0_0_15px_rgba(77,142,255,0.2)] flex items-center justify-center cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-95"
+            >
+              Envoyer
             </button>
           </div>
         </form>
