@@ -244,8 +244,27 @@ function CommunityContent() {
     const previousSelectedItem = selectedItem;
     
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      setToastMessage('Lien copié dans le presse-papiers !');
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: `OptiMax - ${item.file_name}`,
+            text: `Découvrez ce modèle 3D optimisé sur OptiMax !`,
+            url: shareUrl,
+          });
+          setToastMessage('Lien partagé avec succès !');
+        } catch (shareError: any) {
+          if (shareError.name === 'AbortError') {
+            return; // User cancelled share
+          }
+          // Fallback to clipboard on other share errors
+          await navigator.clipboard.writeText(shareUrl);
+          setToastMessage('Lien copié dans le presse-papiers !');
+        }
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        setToastMessage('Lien copié dans le presse-papiers !');
+      }
+      
       setTimeout(() => setToastMessage(''), 3000);
       
       // Optimistic UI updates
