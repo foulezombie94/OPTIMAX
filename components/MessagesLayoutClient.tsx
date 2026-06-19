@@ -182,7 +182,7 @@ export default function MessagesLayoutClient({
   // Realtime updates for messages (to get "en direct" status changes)
   useEffect(() => {
     const channel = supabase.channel('messages_layout_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload) => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload: any) => {
         const newRecord = payload.new as any;
         const oldRecord = payload.old as any;
         
