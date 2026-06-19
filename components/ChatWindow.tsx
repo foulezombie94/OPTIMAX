@@ -246,6 +246,7 @@ export default function ChatWindow({
           messages.map((msg) => {
             const isMe = msg.sender_id === currentUserId;
             
+            return (
               <div key={msg.id} className="w-full flex flex-col mb-1 group">
                 
                 {/* Time header above groups of messages (Simplified logic here) */}
