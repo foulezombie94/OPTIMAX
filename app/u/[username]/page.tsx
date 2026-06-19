@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import OptimizationsGrid from '@/components/OptimizationsGrid';
 
+import ProfileBackButton from '@/components/ProfileBackButton';
+
 export async function generateMetadata({ params }: { params: Promise<{ username: string }> }) {
   const resolvedParams = await params;
   return {
@@ -78,9 +80,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
       <div className="hero-bg" title="Abstract liquid background"></div>
       
       <div className="max-w-7xl mx-auto">
-        <Link href="/community" className="inline-flex items-center gap-2 text-on-surface-variant hover:text-emerald-400 transition-colors font-label-md mt-4">
-          <span className="material-symbols-outlined text-[18px]">arrow_back</span> Back to Community
-        </Link>
+        <ProfileBackButton />
 
         {/* Profile Header Card */}
         <div className="glass-panel rounded-2xl p-8 md:p-10 mb-12 flex flex-col md:flex-row items-center md:items-start gap-8 mt-6 relative overflow-hidden bg-surface/40">
