@@ -22,6 +22,7 @@ type Message = {
   sender_name?: string;
   content: string;
   created_at: string;
+  raw_date: string;
   isPdf?: boolean;
   fileSize?: string;
   reactions?: string[];
@@ -47,6 +48,23 @@ const getAvatarColor = (name: string) => {
     sum += name.charCodeAt(i);
   }
   return colors[sum % colors.length];
+};
+
+const formatDateHeader = (dateString: string) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  if (date.toDateString() === now.toDateString()) {
+    return "AUJOURD'HUI";
+  } else if (date.toDateString() === yesterday.toDateString()) {
+    return "HIER";
+  } else {
+    // e.g. "7 JUIN, 2023"
+    const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'long', year: 'numeric' };
+    return date.toLocaleDateString('fr-FR', options).toUpperCase();
+  }
 };
 
 export default function ChatWindow({ 
@@ -101,6 +119,7 @@ export default function ChatWindow({
           sender_id: msg.sender_id,
           content: msg.content,
           created_at: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          raw_date: msg.created_at,
           isPdf,
           fileSize: isPdf ? '1.2 MB' : undefined,
         };
@@ -134,6 +153,7 @@ export default function ChatWindow({
               sender_id: newMsg.sender_id,
               content: newMsg.content,
               created_at: new Date(newMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              raw_date: newMsg.created_at,
               isPdf,
               fileSize: isPdf ? '1.2 MB' : undefined,
             }]);
@@ -158,13 +178,15 @@ export default function ChatWindow({
     const content = input.trim();
     setInput('');
 
+    const now = new Date();
     const tempId = crypto.randomUUID();
     const isPdf = content.toLowerCase().endsWith('.pdf');
     const newMsg: Message = {
       id: tempId,
       sender_id: currentUserId,
       content,
-      created_at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      created_at: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      raw_date: now.toISOString(),
       isPdf,
       fileSize: isPdf ? '1.2 MB' : undefined,
     };
@@ -243,16 +265,28 @@ export default function ChatWindow({
             <p className="text-[11px] font-bold text-[#666] tracking-widest uppercase">AUJOURD'HUI</p>
           </div>
         ) : (
-          messages.map((msg) => {
+          messages.map((msg, index) => {
             const isMe = msg.sender_id === currentUserId;
+            
+            let showDateHeader = false;
+            if (index === 0) {
+              showDateHeader = true;
+            } else {
+              const prevMsg = messages[index - 1];
+              const currentDate = new Date(msg.raw_date).toDateString();
+              const prevDate = new Date(prevMsg.raw_date).toDateString();
+              if (currentDate !== prevDate) {
+                showDateHeader = true;
+              }
+            }
             
             return (
               <div key={msg.id} className="w-full flex flex-col mb-1 group">
                 
-                {/* Time header above groups of messages (Simplified logic here) */}
-                {msg.id === messages[0]?.id && (
+                {/* Time header above groups of messages */}
+                {showDateHeader && (
                   <div className="text-center my-6">
-                    <span className="text-[11px] font-bold text-[#666] tracking-widest uppercase">AUJOURD'HUI</span>
+                    <span className="text-[11px] font-bold text-[#666] tracking-widest uppercase">{formatDateHeader(msg.raw_date)}</span>
                   </div>
                 )}
 
