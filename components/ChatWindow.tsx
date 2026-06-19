@@ -75,48 +75,25 @@ const formatDuration = (seconds: number) => {
 
 const AudioMessageBubble = ({ content, isMe }: { content: string, isMe: boolean }) => {
   const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [showTranscript, setShowTranscript] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Parse __AUDIO__:duration:base64:transcript
-  // If it's old format without base64/transcript, they will be undefined
+  // Parse __AUDIO__|duration|base64|transcript
   const parts = content.split(':');
-  const duration = parseInt(parts[1], 10) || 0;
-  // Because base64 string contains ':', we must re-join the rest or parse differently.
-  // Actually, format is __AUDIO__:duration:base64... but base64 contains data:audio/webm;base64,... which has a colon!
-  // Better split: content.match(/__AUDIO__:(\d+):([^:]+):?(.*)?/)
-  // Let's manually parse:
-  let base64Audio = '';
-  let transcript = '';
-  
-  const firstColon = content.indexOf(':', 0);
-  const secondColon = content.indexOf(':', firstColon + 1);
-  if (secondColon !== -1) {
-     // we have __AUDIO__:12:data:audio...
-     // find where transcript starts? base64 doesn't have colons after data:audio/webm;base64,
-     const commaIndex = content.indexOf(',', secondColon);
-     // Base64 regex is basically letters, numbers, +, /, =.
-     // To avoid issues, I should have formatted it as __AUDIO__|duration|base64|transcript
-     // For now, let's assume if parts length > 2, the rest is base64 and transcript.
-     // Let's use a safer parsing: 
-     // format we will save: __AUDIO__|{duration}|{base64}|{transcript}
-  }
-
-  // Let's parse assuming the new format `__AUDIO__|duration|base64|transcript`
-  // and fallback to `:` for older test messages
-  let parsedDuration = duration;
+  let duration = parseInt(parts[1], 10) || 0;
   let parsedBase64 = '';
   let parsedTranscript = '';
 
   if (content.startsWith('__AUDIO__|')) {
      const split = content.split('|');
-     parsedDuration = parseInt(split[1], 10) || 0;
+     duration = parseInt(split[1], 10) || 0;
      parsedBase64 = split[2] || '';
      parsedTranscript = split[3] || '';
   }
 
   const togglePlay = () => {
-     if (!parsedBase64) return; // Cannot play dummy audio
+     if (!parsedBase64) return;
      if (isPlaying) {
         audioRef.current?.pause();
      } else {
@@ -125,35 +102,57 @@ const AudioMessageBubble = ({ content, isMe }: { content: string, isMe: boolean 
      setIsPlaying(!isPlaying);
   };
 
+  const handleTimeUpdate = () => {
+     if (audioRef.current) {
+        const current = audioRef.current.currentTime;
+        const total = audioRef.current.duration || duration || 1;
+        setProgress(current / total);
+     }
+  };
+
   useEffect(() => {
     if (audioRef.current) {
-      audioRef.current.onended = () => setIsPlaying(false);
+      audioRef.current.onended = () => {
+         setIsPlaying(false);
+         setProgress(0);
+      };
     }
   }, []);
 
+  // Determinist waveform heights for 30 bars
+  const waveformHeights = [30, 50, 80, 40, 100, 60, 40, 90, 70, 50, 70, 30, 50, 80, 40, 60, 90, 30, 50, 100, 40, 70, 80, 50, 90, 40, 60, 30, 80, 50];
+
   return (
-    <div className={`flex flex-col w-full min-w-[260px] p-3 rounded-2xl shadow-sm ${isMe ? 'bg-[#1c1c1e] border-l-[3px] border-[#f23c57]' : 'bg-[#1c1c1e] border-l-[3px] border-[#00a6ff]'}`}>
+    <div className={`flex flex-col w-full min-w-[280px] p-3 rounded-2xl shadow-sm ${isMe ? 'bg-[#1c1c1e] border-l-[3px] border-[#f23c57]' : 'bg-[#1c1c1e] border-l-[3px] border-[#00a6ff]'}`}>
       <div className="flex items-center gap-3">
         <button onClick={togglePlay} className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 shadow-lg cursor-pointer ${isMe ? 'bg-[#f23c57] hover:bg-[#ff0050]' : 'bg-[#00a6ff] hover:bg-[#33b8ff]'} transition-colors`}>
           <span className="material-symbols-outlined text-white text-[28px] ml-0.5" style={{fontVariationSettings: "'FILL' 1"}}>{isPlaying ? 'pause' : 'play_arrow'}</span>
         </button>
         <div className="flex-grow flex flex-col justify-center gap-1.5">
            {/* Waveform */}
-           <div className="flex items-center gap-[3px] h-7">
-              {Array.from({length: 15}).map((_, i) => {
-                const heights = [30, 50, 80, 40, 100, 60, 40, 90, 70, 50, 70, 30, 50, 80, 40];
+           <div className="flex items-center justify-between gap-[3px] h-7 w-full">
+              {waveformHeights.map((height, i) => {
+                const isPlayed = (i / waveformHeights.length) <= progress;
+                const activeColor = isMe ? 'bg-[#f23c57]' : 'bg-[#00a6ff]';
+                const inactiveColor = 'bg-[#444]';
                 return (
-                  <div key={i} className={`w-[3px] rounded-full transition-all duration-300 ${isPlaying ? 'animate-pulse' : 'opacity-80'} ${isMe ? 'bg-[#f23c57]' : 'bg-[#00a6ff]'}`} style={{height: `${heights[i]}%`}}></div>
+                  <div 
+                    key={i} 
+                    className={`flex-grow max-w-[4px] rounded-full transition-colors duration-100 ${isPlayed ? activeColor : inactiveColor}`} 
+                    style={{height: `${height}%`}}
+                  ></div>
                 );
               })}
            </div>
            <div className="flex justify-between items-center px-1">
-             <span className="text-[12px] font-mono text-white/60">{formatDuration(parsedDuration)}</span>
+             <span className={`text-[12px] font-mono transition-opacity duration-300 ${isPlaying ? 'opacity-0' : 'text-white/60'}`}>
+                {formatDuration(duration)}
+             </span>
              <div className="bg-white/10 px-1.5 py-0.5 rounded text-[9px] font-bold text-white/80 tracking-widest">1X</div>
            </div>
         </div>
       </div>
-      <div className="mt-3 text-center border-t border-white/5 pt-2">
+      <div className="mt-2 text-center border-t border-white/5 pt-2">
         <button onClick={() => setShowTranscript(!showTranscript)} className="text-[12px] font-bold text-[#888] hover:text-white transition-colors cursor-pointer select-none">
           {showTranscript ? "Masquer la transcription" : "Afficher la transcription"}
         </button>
@@ -165,7 +164,7 @@ const AudioMessageBubble = ({ content, isMe }: { content: string, isMe: boolean 
           </div>
         )}
       </div>
-      {parsedBase64 && <audio ref={audioRef} src={parsedBase64} className="hidden" />}
+      {parsedBase64 && <audio ref={audioRef} src={parsedBase64} onTimeUpdate={handleTimeUpdate} className="hidden" />}
     </div>
   );
 };
@@ -605,12 +604,15 @@ export default function ChatWindow({
         {/* Input Pill */}
         <form onSubmit={sendMessage} className="flex-grow flex items-center bg-transparent border border-[#444] rounded-full px-4 py-1.5 min-h-[42px] focus-within:border-[#666] transition-colors relative">
           {isRecording ? (
-            <div className="w-full flex items-center justify-between px-3 text-[#f23c57] font-medium h-[24px] pt-1">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-[#f23c57] rounded-full animate-pulse"></div>
-                <span className="animate-pulse text-[15px]">Enregistrement...</span>
+            <div className="w-full flex items-center justify-between px-3 text-[#f23c57] font-medium h-[24px] pt-1 gap-4">
+              <div className="flex-grow flex items-center gap-[3px] h-5 overflow-hidden">
+                 {/* Live recording waveform */}
+                 {Array.from({length: Math.min(30, recordingDuration * 3 + 4)}).map((_, i) => {
+                    const h = [30, 50, 80, 40, 100, 60, 40, 90, 70, 50, 70, 30, 50, 80, 40, 60, 90, 30, 50, 100, 40, 70, 80, 50, 90, 40, 60, 30, 80, 50];
+                    return <div key={i} className="flex-grow max-w-[4px] bg-[#f23c57] rounded-full animate-pulse transition-all" style={{height: `${h[i % h.length]}%`}}></div>
+                 })}
               </div>
-              <span className="font-mono text-[16px]">{formatDuration(recordingDuration)}</span>
+              <span className="font-mono text-[16px] shrink-0">{formatDuration(recordingDuration)}</span>
             </div>
           ) : (
             <textarea
