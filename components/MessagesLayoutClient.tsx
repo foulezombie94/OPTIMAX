@@ -491,7 +491,7 @@ export default function MessagesLayoutClient({
                 // Mark as read: set is_read = true on all messages from this partner to me
                 await supabase
                   .from('messages')
-                  .update({ is_read: true })
+                  .update({ is_read: true, read_at: new Date().toISOString() })
                   .eq('sender_id', partnerId)
                   .eq('receiver_id', currentUserId)
                   .eq('is_read', false);
@@ -512,7 +512,7 @@ export default function MessagesLayoutClient({
                 if (latestMsgs && latestMsgs.length > 0) {
                   await supabase
                     .from('messages')
-                    .update({ is_read: false })
+                    .update({ is_read: false, read_at: null })
                     .eq('id', latestMsgs[0].id);
                 }
                 setUnreadChats(prev => {

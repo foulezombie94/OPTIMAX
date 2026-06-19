@@ -382,7 +382,7 @@ export default function ChatWindow({
             // Automatically mark this new message as read since the chat is open
             supabase
               .from('messages')
-              .update({ is_read: true })
+              .update({ is_read: true, read_at: new Date().toISOString() })
               .eq('id', newMsg.id)
               .then(({ error }: { error: any }) => {
                 if (error) console.error('Error marking new message as read:', error);
@@ -402,7 +402,7 @@ export default function ChatWindow({
     const markAsRead = async () => {
       await supabase
         .from('messages')
-        .update({ is_read: true })
+        .update({ is_read: true, read_at: new Date().toISOString() })
         .eq('sender_id', partnerId)
         .eq('receiver_id', currentUserId)
         .eq('is_read', false);

@@ -22,7 +22,7 @@ export default async function MessagesLayout({
   // Fetch all messages involving the user to determine conversations
   const { data: msgs } = await supabase
     .from('messages')
-    .select('id, sender_id, receiver_id, created_at, content, is_read')
+    .select('id, sender_id, receiver_id, created_at, content, is_read, read_at')
     .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
     .order('created_at', { ascending: false });
 
@@ -70,16 +70,22 @@ export default async function MessagesLayout({
       }
     }
 
+    const isOpenedByPartner = latestMsg ? (latestMsg.sender_id === user.id && latestMsg.is_read) : false;
+    let timeToDisplay = latestMsg ? new Date(latestMsg.created_at).getTime() : undefined;
+    if (isOpenedByPartner && latestMsg && latestMsg.read_at) {
+      timeToDisplay = new Date(latestMsg.read_at).getTime();
+    }
+
     return {
       id: partner.id,
       displayName: partner.username || partner.email?.split('@')[0] || 'Unknown User',
       username: partner.username || partner.email?.split('@')[0] || 'unknown',
       avatarUrl: partner.avatar_url || undefined,
       latestMessageSnippet: snippet,
-      latestMessageAt: latestMsg ? new Date(latestMsg.created_at).getTime() : undefined,
+      latestMessageAt: timeToDisplay,
       isUnread: latestMsg ? (latestMsg.receiver_id === user.id && !latestMsg.is_read) : false,
       lastSenderId: latestMsg ? latestMsg.sender_id : undefined,
-      isOpenedByPartner: latestMsg ? (latestMsg.sender_id === user.id && latestMsg.is_read) : false,
+      isOpenedByPartner,
     };
   }).sort((a, b) => {
     const timeA = typeof a.latestMessageAt === 'number' ? a.latestMessageAt : 0;
