@@ -378,6 +378,15 @@ export default function ChatWindow({
               isPdf,
               fileSize: isPdf ? '1.2 MB' : undefined,
             }]);
+
+            // Automatically mark this new message as read since the chat is open
+            supabase
+              .from('messages')
+              .update({ is_read: true })
+              .eq('id', newMsg.id)
+              .then(({ error }: { error: any }) => {
+                if (error) console.error('Error marking new message as read:', error);
+              });
           }
         }
       )
@@ -387,6 +396,19 @@ export default function ChatWindow({
       supabase.removeChannel(channel);
     };
   }, [partnerId, currentUserId, supabase, fetchMessages]);
+
+  // Mark unread messages from this partner as read
+  useEffect(() => {
+    const markAsRead = async () => {
+      await supabase
+        .from('messages')
+        .update({ is_read: true })
+        .eq('sender_id', partnerId)
+        .eq('receiver_id', currentUserId)
+        .eq('is_read', false);
+    };
+    markAsRead();
+  }, [partnerId, currentUserId, supabase]);
 
   useEffect(() => {
     scrollToBottom();

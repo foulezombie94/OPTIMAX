@@ -179,6 +179,26 @@ export default function MessagesLayoutClient({
     };
   }, []);
 
+  // Realtime updates for messages (to get "en direct" status changes)
+  useEffect(() => {
+    const channel = supabase.channel('messages_layout_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload) => {
+        const newRecord = payload.new as any;
+        const oldRecord = payload.old as any;
+        
+        // If current user is involved in the changed message, refresh the layout
+        if ((newRecord && (newRecord.sender_id === currentUserId || newRecord.receiver_id === currentUserId)) ||
+            (oldRecord && (oldRecord.sender_id === currentUserId || oldRecord.receiver_id === currentUserId))) {
+          router.refresh();
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, currentUserId, router]);
+
   return (
     <div className="flex-grow pt-[80px] pb-0 flex overflow-hidden bg-background font-sans relative">
       {/* Abstract Background for PC */}
@@ -343,8 +363,10 @@ export default function MessagesLayoutClient({
                                 </>
                               );
                             })()}
-                            <span className="mx-1.5 text-[#8e8e93]">-</span>
-                            <span className="shrink-0 text-[#8e8e93]">{partner.latestMessageAt}</span>
+                            <span className="mx-1 text-[#8e8e93]">&bull;</span>
+                            <span className="shrink-0 text-[#8e8e93]">
+                              {partner.latestMessageAt === "À l'instant" ? "À l'instant" : `il y a ${partner.latestMessageAt}`}
+                            </span>
                           </div>
                         </div>
 
