@@ -55,7 +55,12 @@ export function ThreeViewer({
         renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
         renderer.setSize(width, height);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        if (isDestroyed) return;
+        
+        if (isDestroyed) {
+          renderer.dispose();
+          renderer.forceContextLoss();
+          return;
+        }
         currentMount.appendChild(renderer.domElement);
 
         // Setup controls
@@ -242,7 +247,10 @@ export function ThreeViewer({
       if (renderer && renderer.domElement && currentMount.contains(renderer.domElement)) {
         currentMount.removeChild(renderer.domElement);
       }
-      if (renderer) renderer.dispose();
+      if (renderer) {
+        renderer.dispose();
+        renderer.forceContextLoss();
+      }
       cleanupPromise.then(cleanup => cleanup && cleanup());
     };
   }, [src, fileType]);

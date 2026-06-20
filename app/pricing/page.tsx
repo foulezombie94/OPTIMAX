@@ -10,8 +10,7 @@ export default async function Pricing(props: { searchParams: SearchParams }) {
   const sessionId = searchParams.session_id;
 
   const supabase = await createClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  const user = session?.user ?? null;
+  const { data: { user } } = await supabase.auth.getUser();
 
   let isPro = false;
   if (user) {

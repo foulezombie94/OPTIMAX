@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server';
 import { redirect } from 'next/navigation';
 import MessagesLayoutClient from '@/components/MessagesLayoutClient';
+import { getUserConversationsAndProfiles } from '@/app/actions/messages';
 
 export const metadata = {
   title: 'Messages - OptiMax',
@@ -12,42 +13,14 @@ export default async function MessagesLayout({
   children: React.ReactNode;
 }) {
   const supabase = await createClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  const user = session?.user ?? null;
+  const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
     redirect('/login');
   }
 
-  // Fetch only the latest message per conversation for performance
-  const { data: latestMsgs } = await supabase
-    .rpc('get_user_conversations', { uid: user.id });
-
-  // Extract conversational partners
-  const partnerIds = new Set<string>();
-  if (latestMsgs) {
-    latestMsgs.forEach((msg: any) => {
-      if (msg.partner_id) partnerIds.add(msg.partner_id);
-    });
-  }
-
-  type PartnerProfile = {
-    id: string;
-    username: string | null;
-    email: string | null;
-    is_pro: boolean | null;
-    avatar_url: string | null;
-  };
-
-  // Fetch partner profiles
-  let partners: PartnerProfile[] = [];
-  if (partnerIds.size > 0) {
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, username, email, is_pro, avatar_url')
-      .in('id', Array.from(partnerIds));
-    partners = profiles || [];
-  }
+  // Fetch cached data via Redis Server Action
+  const { latestMsgs, partners } = await getUserConversationsAndProfiles(user.id);
 
   // Format and sort partners
   const sortedPartners = partners.map(partner => {

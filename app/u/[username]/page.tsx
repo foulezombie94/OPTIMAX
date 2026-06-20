@@ -72,8 +72,8 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   }
 
   // Get current logged-in user to pass to the message form
-  const { data: { session } } = await supabase.auth.getSession();
-  const currentUser = session?.user ?? null;
+  const { data: { user } } = await supabase.auth.getUser();
+  const currentUser = user ?? null;
 
   // Fetch their public creations
   const { data: publicOptimizations } = await supabase

@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense, useMemo, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
+import { getCommunityShowcase } from '@/app/actions/community';
 import { PublicOptimization } from '@/components/community/types';
 import { CommunityHeader } from '@/components/community/CommunityHeader';
 import { CommunityToolbar, SortOptions } from '@/components/community/CommunityToolbar';
@@ -71,18 +72,7 @@ function CommunityContent() {
     
     async function fetchShowcase() {
       try {
-        const { data, error } = await supabase
-          .from('public_optimizations_popularity')
-          .select('*')
-          .or('file_type.ilike.model/%,file_name.ilike.%.obj,file_name.ilike.%.fbx,file_name.ilike.%.stl,file_name.ilike.%.glb,file_name.ilike.%.gltf,file_name.ilike.%.ply,file_name.ilike.%.dae')
-          .limit(100);
-        
-        if (error) throw error;
-        
-        const public3DOnly = (data || []).map((item: PublicOptimization) => ({
-          ...item,
-          fileTypeLabel: item.file_type.split('/')[1]?.toUpperCase() || '3D'
-        }));
+        const public3DOnly = await getCommunityShowcase();
 
         if (!isMounted) return;
         setItems(public3DOnly);
