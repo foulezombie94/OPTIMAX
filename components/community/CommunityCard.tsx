@@ -1,6 +1,10 @@
+'use client';
+
 import Link from 'next/link';
 import { ThreeViewer } from '@/components/OptimizationsGrid';
 import { PublicOptimization } from './types';
+import { motion, useMotionValue, useSpring, useTransform, useMotionTemplate } from 'framer-motion';
+import { useRef, useState } from 'react';
 
 type CommunityCardProps = {
   item: PublicOptimization;
@@ -8,6 +12,7 @@ type CommunityCardProps = {
   onOpen: (item: PublicOptimization) => void;
   onLike: (e: React.MouseEvent, item: PublicOptimization) => void;
   onShare: (e: React.MouseEvent, item: PublicOptimization) => void;
+  isFirst?: boolean;
 };
 
 const formatBytes = (bytes: number) => {
@@ -18,17 +23,72 @@ const formatBytes = (bytes: number) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 };
 
-export function CommunityCard({ item, isLiked, onOpen, onLike, onShare }: CommunityCardProps) {
-  // Premium Emerald theme for 3D Cards
-  const themeColor = 'from-emerald-500/5 to-teal-500/5 hover:border-emerald-500/30 tech-card-glow';
-  const badgeColor = 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30';
-  const cardIcon = 'view_in_ar';
+export function CommunityCard({ item, isLiked, onOpen, onLike, onShare, isFirst = false }: CommunityCardProps) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [isHovered, setIsHovered] = useState(false);
+
+  // Framer Motion 3D Tilt values
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+
+  const mouseXSpring = useSpring(x, { stiffness: 300, damping: 40 });
+  const mouseYSpring = useSpring(y, { stiffness: 300, damping: 40 });
+
+  const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], ["10deg", "-10deg"]);
+  const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], ["-10deg", "10deg"]);
+
+  const glareX = useTransform(mouseXSpring, [-0.5, 0.5], ["0%", "100%"]);
+  const glareY = useTransform(mouseYSpring, [-0.5, 0.5], ["0%", "100%"]);
+  
+  const glareBackground = useMotionTemplate`radial-gradient(circle at ${glareX} ${glareY}, rgba(255,255,255,0.15) 0%, transparent 60%)`;
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLElement>) => {
+    if (!cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const width = rect.width;
+    const height = rect.height;
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    
+    const xPct = mouseX / width - 0.5;
+    const yPct = mouseY / height - 0.5;
+    
+    x.set(xPct);
+    y.set(yPct);
+  };
+
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+    x.set(0);
+    y.set(0);
+  };
+
+  const handleMouseEnter = () => {
+    setIsHovered(true);
+  };
+
+  const themeColor = 'from-[#1a1a24]/80 to-[#101018]/80 hover:border-emerald-500/30 tech-card-glow';
   const fileTypeLabel = item.fileTypeLabel || '3D';
 
   return (
-    <article 
-      className={`relative glass-panel rounded-3xl overflow-hidden group transition-all duration-500 hover:-translate-y-2 bg-[#141419]/40 flex flex-col justify-between border border-white/5 ${themeColor}`}
+    <motion.article 
+      ref={cardRef}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      onMouseEnter={handleMouseEnter}
+      style={{
+        rotateX,
+        rotateY,
+        transformStyle: "preserve-3d",
+      }}
+      className={`relative rounded-[32px] overflow-hidden group transition-colors duration-500 bg-gradient-to-br flex flex-col justify-between border border-white/10 shadow-[0_20px_40px_rgba(0,0,0,0.4)] ${themeColor} ${isFirst ? 'md:col-span-2' : ''}`}
     >
+      {/* Dynamic Glare Overlay */}
+      <motion.div 
+        style={{ background: glareBackground, opacity: isHovered ? 1 : 0 }}
+        className="absolute inset-0 z-50 pointer-events-none mix-blend-overlay transition-opacity duration-500"
+      />
+
       <Link 
         href={`/community?show=${item.id}`}
         onClick={(e) => {
@@ -37,13 +97,15 @@ export function CommunityCard({ item, isLiked, onOpen, onLike, onShare }: Commun
         }}
         shallow
         className="absolute inset-0 z-10"
-        aria-label={`Voir le modèle 3D: ${item.file_name}`}
+        aria-label={`Voir le modèle: ${item.file_name}`}
       />
-      {/* Model Thumbnail container */}
-      <div className="relative w-full h-60 bg-gradient-to-tr flex flex-col items-center justify-center overflow-hidden border-b border-white/5">
-        {/* Pulse glow overlay */}
-        <div className="absolute w-36 h-36 bg-emerald-500/10 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none animate-pulse-glow"></div>
-        
+      
+      {/* Media Container with 3D Popout effect */}
+      <div 
+        style={{ transform: "translateZ(30px)" }}
+        className={`relative w-full bg-gradient-to-tr flex flex-col items-center justify-center overflow-hidden border-b border-white/5 ${isFirst ? 'h-72 md:h-96' : 'h-64'}`}
+      >
+        <div className="absolute w-48 h-48 bg-emerald-500/10 rounded-full blur-[40px] opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
         <div className="absolute inset-0 tech-grid opacity-[0.25] pointer-events-none mix-blend-overlay"></div>
         
         {item.preview_url ? (
@@ -51,75 +113,68 @@ export function CommunityCard({ item, isLiked, onOpen, onLike, onShare }: Commun
             <ThreeViewer src={item.preview_url} fileType={item.file_type} showLegend={false} />
           </div>
         ) : (
-          /* Floating model symbol */
-          <span 
-            className="material-symbols-outlined text-[76px] text-emerald-400/80 group-hover:text-emerald-300 drop-shadow-[0_0_20px_rgba(78,222,163,0.35)] transition-all duration-700 ease-out group-hover:scale-110 animate-float-gentle"
-          >
-            {cardIcon}
+          <span className="material-symbols-outlined text-[80px] text-emerald-400/80 group-hover:text-emerald-300 drop-shadow-[0_0_30px_rgba(78,222,163,0.35)] transition-all duration-700 ease-out group-hover:scale-110">
+            view_in_ar
           </span>
         )}
         
-        {/* Format pill */}
-        <span className={`absolute top-4 right-4 border px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest backdrop-blur-md ${badgeColor}`}>
+        <span className="absolute top-5 right-5 bg-background/50 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-[0.15em] text-white">
           {fileTypeLabel}
         </span>
 
-        {/* File Size Badge */}
-        <div className="absolute bottom-4 left-4 bg-background/70 backdrop-blur-md border border-white/5 px-3.5 py-1.5 rounded-xl text-on-surface-variant text-[11px] font-semibold flex items-center gap-1.5 shadow-md select-none">
-          <span className="material-symbols-outlined text-[14px] text-emerald-400">save</span>
+        <div className="absolute bottom-5 left-5 bg-background/70 backdrop-blur-md border border-white/10 px-4 py-2 rounded-2xl text-on-surface-variant text-[12px] font-bold flex items-center gap-2 shadow-[0_10px_20px_rgba(0,0,0,0.5)] select-none">
+          <span className="material-symbols-outlined text-[16px] text-emerald-400">save</span>
           {formatBytes(item.compressed_size)}
         </div>
       </div>
 
       {/* Body Content */}
-      <div className="p-6 space-y-5 flex-grow flex flex-col justify-between">
-        <div className="space-y-1">
-          <h3 className="font-label-lg text-label-lg text-on-surface truncate group-hover:text-emerald-400 transition-colors font-bold tracking-tight" title={item.file_name}>
+      <div 
+        style={{ transform: "translateZ(20px)" }}
+        className="p-7 space-y-6 flex-grow flex flex-col justify-between bg-black/20"
+      >
+        <div className="space-y-2">
+          <h3 className={`font-display font-black text-on-surface truncate group-hover:text-emerald-400 transition-colors tracking-tight ${isFirst ? 'text-[28px]' : 'text-[22px]'}`} title={item.file_name}>
             {item.file_name}
           </h3>
-          <p className="text-body-sm text-on-surface-variant flex items-center gap-1.5">
-            par <Link href={`/u/${item.creator_name || item.user_id}`} onClick={(e) => e.stopPropagation()} className="relative z-20 text-on-surface font-semibold hover:text-emerald-300 transition-colors">@{item.creator_name || 'créateur'}</Link>
+          <p className="text-[13px] text-on-surface-variant/80 flex items-center gap-1.5 font-medium">
+            par <Link href={`/u/${item.creator_name || item.user_id}`} onClick={(e) => e.stopPropagation()} className="relative z-20 text-on-surface hover:text-emerald-300 transition-colors">@{item.creator_name || 'créateur'}</Link>
             {item.creator_is_pro && (
-              <span className="bg-tertiary/20 text-tertiary border border-tertiary/30 px-1.5 py-0.5 rounded-md text-[9px] font-bold tracking-wider uppercase select-none">
+              <span className="bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded text-[9px] font-black tracking-widest uppercase select-none">
                 PRO
               </span>
             )}
           </p>
         </div>
 
-        {/* Stats footer & Interventions */}
-        <div className="flex justify-between items-center border-t border-white/5 pt-4">
-          {/* Social counts */}
-          <div className="flex gap-4.5 text-on-surface-variant text-[12px] font-semibold">
-            <span className="flex items-center gap-1" title="Vues">
-              <span className="material-symbols-outlined text-[16px] text-on-surface-variant/70">visibility</span>
+        <div className="flex justify-between items-center border-t border-white/5 pt-5">
+          <div className="flex gap-5 text-on-surface-variant text-[13px] font-bold">
+            <span className="flex items-center gap-1.5" title="Vues">
+              <span className="material-symbols-outlined text-[18px] opacity-70">visibility</span>
               <span>{item.views || 0}</span>
             </span>
-            <span className="flex items-center gap-1" title="J'aime">
-              <span className="material-symbols-outlined text-[16px] text-error">favorite</span>
+            <span className="flex items-center gap-1.5" title="J'aime">
+              <span className="material-symbols-outlined text-[18px] text-error/90">favorite</span>
               <span>{item.likes || 0}</span>
             </span>
           </div>
 
-          {/* Interactive Buttons */}
-          <div className="flex gap-2">
+          <div className="flex gap-2.5">
             <button
               onClick={(e) => onLike(e, item)}
-              className={`relative z-20 p-2.5 rounded-xl border transition-all flex items-center justify-center active:scale-90 ${isLiked ? 'bg-error/10 border-error/30 text-error shadow-[0_0_15px_rgba(255,100,100,0.1)]' : 'glass-panel text-on-surface-variant hover:text-error hover:bg-error/5 hover:border-error/20'}`}
-              title={isLiked ? 'Déjà aimé' : 'Aimer la création'}
+              className={`relative z-20 w-10 h-10 rounded-xl border transition-all flex items-center justify-center active:scale-90 ${isLiked ? 'bg-error/15 border-error/40 text-error shadow-[0_0_20px_rgba(255,100,100,0.2)]' : 'bg-white/5 border-white/10 text-on-surface hover:text-error hover:bg-error/10 hover:border-error/30'}`}
             >
               <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: isLiked ? "'FILL' 1" : "'FILL' 0" }}>favorite</span>
             </button>
             <button
               onClick={(e) => onShare(e, item)}
-              className="relative z-20 p-2.5 rounded-xl border glass-panel text-on-surface-variant hover:text-emerald-400 hover:bg-emerald-500/5 hover:border-emerald-500/20 transition-all flex items-center justify-center active:scale-90"
-              title="Partager la création"
+              className="relative z-20 w-10 h-10 rounded-xl border bg-white/5 border-white/10 text-on-surface hover:text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-all flex items-center justify-center active:scale-90"
             >
               <span className="material-symbols-outlined text-[18px]">share</span>
             </button>
           </div>
         </div>
       </div>
-    </article>
+    </motion.article>
   );
 }

@@ -50,15 +50,25 @@ const getRelativeSnapTime = (dateInput: string | number | undefined) => {
   const now = new Date();
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
   
-  if (diffInSeconds < 60) return `${Math.max(1, diffInSeconds)} s`;
+  if (diffInSeconds < 15) return 'À l\'instant';
+  if (diffInSeconds < 60) return `il y a ${Math.floor(diffInSeconds / 15) * 15} s`;
   const diffInMinutes = Math.floor(diffInSeconds / 60);
-  if (diffInMinutes < 60) return `${diffInMinutes} min`;
+  if (diffInMinutes < 60) return `il y a ${diffInMinutes} min`;
   const diffInHours = Math.floor(diffInMinutes / 60);
-  if (diffInHours < 24) return `${diffInHours} h`;
+  if (diffInHours < 24) return `il y a ${diffInHours} h`;
+  
   const diffInDays = Math.floor(diffInHours / 24);
-  if (diffInDays < 7) return `${diffInDays} j`;
+  if (diffInDays === 1) return 'Hier';
+  if (diffInDays < 7) return `il y a ${diffInDays} j`;
+  
   const diffInWeeks = Math.floor(diffInDays / 7);
-  return `${diffInWeeks} sem`;
+  if (diffInDays < 30) return `il y a ${diffInWeeks} sem`;
+  
+  const diffInMonths = Math.floor(diffInDays / 30);
+  if (diffInDays < 365) return `il y a ${diffInMonths} mois`;
+  
+  const diffInYears = Math.floor(diffInDays / 365);
+  return `il y a ${diffInYears} an${diffInYears > 1 ? 's' : ''}`;
 };
 
 const getSnapStatus = (partner: any, isLocallyUnread: boolean, currentUserId: string) => {
@@ -67,7 +77,7 @@ const getSnapStatus = (partner: any, isLocallyUnread: boolean, currentUserId: st
   if (partner.lastSenderId === partner.id) {
     if (isUnread) {
       return {
-        text: 'Nouveau Snap',
+        text: 'Nouveau message',
         textColor: 'text-[#bc2a8d] font-bold tracking-tight',
         icon: <div className="w-[12px] h-[12px] rounded-[2px] bg-[#bc2a8d] mr-2 shrink-0"></div>
       };
@@ -81,7 +91,7 @@ const getSnapStatus = (partner: any, isLocallyUnread: boolean, currentUserId: st
   } else if (partner.lastSenderId === currentUserId) {
     if (partner.isOpenedByPartner) {
       return {
-        text: 'Ouvert',
+        text: 'Vu',
         textColor: 'text-[#8e8e93]',
         icon: <span className="material-symbols-outlined text-[14px] text-[#bc2a8d] mr-1.5" style={{ fontVariationSettings: "'FILL' 0" }}>play_arrow</span>
       };
@@ -114,6 +124,15 @@ export default function MessagesLayoutClient({
   const router = useRouter();
   const supabase = createClient();
   const [searchQuery, setSearchQuery] = useState('');
+  const [tick, setTick] = useState(0);
+
+  // Force re-render every 15 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTick(t => t + 1);
+    }, 15000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Selected chat ID
   const currentChatId = pathname?.split('/').pop() || '';
@@ -365,7 +384,7 @@ export default function MessagesLayoutClient({
                             })()}
                             <span className="mx-1 text-[#8e8e93]">&bull;</span>
                             <span className="shrink-0 text-[#8e8e93]">
-                              {partner.latestMessageAt === "À l'instant" ? "À l'instant" : `il y a ${partner.latestMessageAt}`}
+                              {partner.latestMessageAt}
                             </span>
                           </div>
                         </div>
@@ -431,7 +450,7 @@ export default function MessagesLayoutClient({
               router.push(`/messages/${contextMenu.partner!.id}`);
             }}>
               <span className="material-symbols-outlined text-[20px] mr-3 text-[#8e8e93] group-hover:text-white" style={{ fontVariationSettings: "'wght' 300" }}>photo_camera</span>
-              <span className="font-semibold text-[14px]">Snap</span>
+              <span className="font-semibold text-[14px]">Photo</span>
             </button>
             <button className="w-full px-4 py-2.5 text-left flex items-center text-white hover:bg-white/5 transition-colors group" onClick={() => { closeContextMenu(); router.push(`/messages/${contextMenu.partner!.id}`); }}>
               <span className="material-symbols-outlined text-[20px] mr-3 text-[#8e8e93] group-hover:text-white" style={{ fontVariationSettings: "'wght' 300" }}>chat_bubble</span>
