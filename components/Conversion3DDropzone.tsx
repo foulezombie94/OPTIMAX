@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { saveOptimization } from '@/app/actions/optimizations';
 import { createClient } from '@/utils/supabase/client';
+import { saveOptimization } from '@/app/actions/optimizations';
 import { useTranslation } from '@/contexts/TranslationContext';
+import { checkIsPro } from '@/utils/isPro';
 
 type ConversionStatus = 'idle' | 'converting' | 'done' | 'error';
 
@@ -35,8 +36,8 @@ export default function Conversion3DDropzone({
 
     const fetchProStatus = async (userId: string) => {
       try {
-        const { data } = await supabase.from('profiles').select('is_pro').eq('id', userId).single();
-        setIsPro(!!data?.is_pro);
+        const { data } = await supabase.from('profiles').select('is_pro, pro_until').eq('id', userId).single();
+        setIsPro(checkIsPro(data));
       } catch (e) {
         console.error('Error fetching pro status', e);
       }

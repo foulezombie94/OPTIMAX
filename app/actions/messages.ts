@@ -8,6 +8,7 @@ export type PartnerProfile = {
   username: string | null;
   email: string | null;
   is_pro: boolean | null;
+  pro_until?: string | null;
   avatar_url: string | null;
 };
 
@@ -39,7 +40,7 @@ export async function getUserConversationsAndProfiles(userId: string) {
       if (partnerIds.size > 0) {
         const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
-          .select('id, username, email, is_pro, avatar_url')
+          .select('id, username, email, is_pro, pro_until, avatar_url')
           .in('id', Array.from(partnerIds));
           
         if (profilesError) {

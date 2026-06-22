@@ -5,6 +5,8 @@ import Link from 'next/link';
 import OptimizationsGrid from '@/components/OptimizationsGrid';
 import T from '@/components/Translate';
 import DeactivateAccountButton from './DeactivateAccountButton';
+import ReferralSection from '@/components/ReferralSection';
+import { checkIsPro } from '@/utils/isPro';
 
 export const metadata = {
   title: 'Profile - OptiMax',
@@ -20,7 +22,7 @@ export default async function ProfilePage() {
 
   // Fetch profile and stats in parallel
   const [profileResult, optimizationsResult] = await Promise.all([
-    supabase.from('profiles').select('id, username, is_pro, location, website, created_at, deactivated_at').eq('id', user.id).single(),
+    supabase.from('profiles').select('id, username, is_pro, pro_until, location, website, created_at, deactivated_at').eq('id', user.id).single(),
     supabase.from('optimizations').select('id, file_name, original_size, compressed_size, file_type, created_at, preview_url, is_public, views, likes, shares').eq('user_id', user.id).order('created_at', { ascending: false }).limit(50)
   ]);
 
@@ -71,7 +73,7 @@ export default async function ProfilePage() {
                 <h1 className="text-display-brand font-display-brand text-on-surface text-[32px] font-bold">
                   {profile?.username || user.email?.split('@')[0] || 'User'}
                 </h1>
-                {profile?.is_pro ? (
+                {checkIsPro(profile) ? (
                   <span className="bg-primary/20 text-primary border border-primary/30 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider flex items-center gap-1 shadow-[0_0_10px_rgba(78,142,255,0.15)]">
                     <span className="material-symbols-outlined text-[14px]">stars</span> Pro
                   </span>
@@ -167,6 +169,8 @@ export default async function ProfilePage() {
               </div>
             </div>
 
+            {/* Referral Section */}
+            <ReferralSection userId={user.id} proUntil={profile?.pro_until} />
           </div>
           
           {/* Right Content: Recent Creations Bento Grid */}

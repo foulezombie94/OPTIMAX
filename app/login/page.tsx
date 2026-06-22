@@ -54,6 +54,7 @@ function LoginContent() {
   
   const searchParams = useSearchParams();
   const nextParam = searchParams.get('next') || '/profile';
+  const refParam = searchParams.get('ref') || '';
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -173,6 +174,7 @@ function LoginContent() {
             {/* Wizard Form */}
             <form className="space-y-5" action={handleSubmit}>
               <input type="hidden" name="next" value={nextParam} />
+              <input type="hidden" name="ref" value={refParam} />
               
               {/* --- STEP 1: CREDENTIALS (Email & Password) --- */}
               {isLogin || signupStep === 1 ? (

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import OptimizationsGrid from '@/components/OptimizationsGrid';
 
 import ProfileBackButton from '@/components/ProfileBackButton';
+import { checkIsPro } from '@/utils/isPro';
 
 export async function generateMetadata({ params }: { params: Promise<{ username: string }> }) {
   const resolvedParams = await params;
@@ -20,7 +21,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   // Try to find user by username
   let { data: profile } = await supabase
     .from('profiles')
-    .select('id, username, email, is_pro, location, website, created_at, avatar_url, deactivated_at')
+    .select('id, username, email, is_pro, pro_until, location, website, created_at, avatar_url, deactivated_at')
     .eq('username', username)
     .maybeSingle();
 
@@ -28,7 +29,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     // Fallback to checking by ID if it's a UUID
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (uuidRegex.test(username)) {
-      const res = await supabase.from('profiles').select('id, username, email, is_pro, location, website, created_at, avatar_url, deactivated_at').eq('id', username).maybeSingle();
+      const res = await supabase.from('profiles').select('id, username, email, is_pro, pro_until, location, website, created_at, avatar_url, deactivated_at').eq('id', username).maybeSingle();
       profile = res.data;
     }
   }
@@ -37,7 +38,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
     // Fallback to checking by email prefix
     const res = await supabase
       .from('profiles')
-      .select('id, username, email, is_pro, location, website, created_at, avatar_url, deactivated_at')
+      .select('id, username, email, is_pro, pro_until, location, website, created_at, avatar_url, deactivated_at')
       .ilike('email', `${username}@%`)
       .limit(1)
       .maybeSingle();
@@ -122,7 +123,7 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
                 <h1 className="text-display-brand font-display-brand text-on-surface text-[32px] font-bold">
                   {profile.username || profile.email?.split('@')[0] || 'Anonymous User'}
                 </h1>
-                {profile.is_pro ? (
+                {checkIsPro(profile) ? (
                   <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider flex items-center gap-1 shadow-[0_0_10px_rgba(78,222,163,0.15)]">
                     <span className="material-symbols-outlined text-[14px]">stars</span> Pro
                   </span>

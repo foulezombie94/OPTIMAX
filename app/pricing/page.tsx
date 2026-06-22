@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/server';
+import { checkIsPro } from '@/utils/isPro';
 
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 
@@ -29,8 +30,8 @@ export default async function Pricing(props: { searchParams: SearchParams }) {
     }
 
     try {
-      const { data: profile } = await supabase.from('profiles').select('is_pro').eq('id', user.id).single();
-      isPro = isPro || !!profile?.is_pro;
+      const { data: profile } = await supabase.from('profiles').select('is_pro, pro_until').eq('id', user.id).single();
+      isPro = isPro || checkIsPro(profile);
     } catch (err) {
       console.error('Error checking user pro status:', err);
     }
