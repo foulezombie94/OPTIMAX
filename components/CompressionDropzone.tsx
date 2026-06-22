@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import imageCompression from 'browser-image-compression';
 import { saveOptimization } from '@/app/actions/optimizations';
 import { createClient } from '@/utils/supabase/client';
 import { useTranslation } from '@/contexts/TranslationContext';
@@ -200,6 +199,7 @@ export default function CompressionDropzone({
           useWebWorker: true,
           initialQuality: 0.85, // Conserver la qualité visuelle
         };
+        const imageCompression = (await import('browser-image-compression')).default;
         const compressedBlob = await imageCompression(file, options);
         setCompressedFile(compressedBlob);
         onOptimizationComplete?.(file, compressedBlob);

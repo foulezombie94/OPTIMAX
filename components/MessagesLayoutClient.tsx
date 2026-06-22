@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import Image from 'next/image';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
 
@@ -124,15 +125,6 @@ export default function MessagesLayoutClient({
   const router = useRouter();
   const supabase = createClient();
   const [searchQuery, setSearchQuery] = useState('');
-  const [tick, setTick] = useState(0);
-
-  // Force re-render every 15 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTick(t => t + 1);
-    }, 15000);
-    return () => clearInterval(interval);
-  }, []);
 
   // Selected chat ID
   const currentChatId = pathname?.split('/').pop() || '';
@@ -153,29 +145,34 @@ export default function MessagesLayoutClient({
     setContextMenu(prev => ({ ...prev, visible: false }));
   };
 
-  const partnerList = dbPartners
-    .filter(p => !hiddenChats.has(p.id))
-    .map(p => ({
-      ...p,
-      avatarUrl: p.avatarUrl || undefined,
-      latestMessageSnippet: p.latestMessageSnippet || 'Click to open conversation',
-      latestMessageAt: getRelativeSnapTime(p.latestMessageAt),
-      isOnline: p.isOnline !== undefined ? p.isOnline : true,
-      isPinned: pinnedChats.has(p.id),
-      isUnread: unreadChats.has(p.id) || (p.isUnread ?? false),
-      lastSenderId: p.lastSenderId,
-      isOpenedByPartner: p.isOpenedByPartner ?? false,
-    }))
-    .sort((a, b) => {
-      if (a.isPinned && !b.isPinned) return -1;
-      if (!a.isPinned && b.isPinned) return 1;
-      return 0;
-    });
+  const partnerList = useMemo(() => {
+    return dbPartners
+      .filter(p => !hiddenChats.has(p.id))
+      .map(p => ({
+        ...p,
+        avatarUrl: p.avatarUrl || undefined,
+        latestMessageSnippet: p.latestMessageSnippet || 'Click to open conversation',
+        latestMessageAt: getRelativeSnapTime(p.latestMessageAt),
+        isOnline: p.isOnline !== undefined ? p.isOnline : true,
+        isPinned: pinnedChats.has(p.id),
+        isUnread: unreadChats.has(p.id) || (p.isUnread ?? false),
+        lastSenderId: p.lastSenderId,
+        isOpenedByPartner: p.isOpenedByPartner ?? false,
+      }))
+      .sort((a, b) => {
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        return 0;
+      });
+  }, [dbPartners, hiddenChats, pinnedChats, unreadChats]);
 
-  const filteredPartners = partnerList.filter(p =>
-    p.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.username.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredPartners = useMemo(() => {
+    const lowerQuery = searchQuery.toLowerCase();
+    return partnerList.filter(p =>
+      p.displayName.toLowerCase().includes(lowerQuery) ||
+      p.username.toLowerCase().includes(lowerQuery)
+    );
+  }, [partnerList, searchQuery]);
 
   // Global call status tracking
   const [activeCallStatus, setActiveCallStatus] = useState<'idle' | 'calling' | 'calling-incoming' | 'connected'>('idle');
@@ -200,16 +197,12 @@ export default function MessagesLayoutClient({
 
   // Realtime updates for messages (to get "en direct" status changes)
   useEffect(() => {
-    const channel = supabase.channel('messages_layout_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (payload: any) => {
-        const newRecord = payload.new as any;
-        const oldRecord = payload.old as any;
-        
-        // If current user is involved in the changed message, refresh the layout
-        if ((newRecord && (newRecord.sender_id === currentUserId || newRecord.receiver_id === currentUserId)) ||
-            (oldRecord && (oldRecord.sender_id === currentUserId || oldRecord.receiver_id === currentUserId))) {
-          router.refresh();
-        }
+    const channel = supabase.channel(`messages_layout_${currentUserId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `receiver_id=eq.${currentUserId}` }, () => {
+        router.refresh();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `sender_id=eq.${currentUserId}` }, () => {
+        router.refresh();
       })
       .subscribe();
 
@@ -266,10 +259,12 @@ export default function MessagesLayoutClient({
                         <div className="relative w-[68px] h-[68px] rounded-full p-[2.5px] bg-[#333333]">
                           <div className="w-full h-full rounded-full bg-black p-[2.5px] relative">
                             {partner.avatarUrl ? (
-                              <img
+                              <Image
                                 src={partner.avatarUrl}
                                 alt={partner.displayName}
-                                className={`w-full h-full rounded-full object-cover group-hover:scale-105 transition-transform ${
+                                fill
+                                sizes="68px"
+                                className={`rounded-full object-cover group-hover:scale-105 transition-transform ${
                                   isThisPartnerCalling ? 'animate-pulse' : ''
                                 }`}
                               />
@@ -340,10 +335,12 @@ export default function MessagesLayoutClient({
                         {/* Avatar */}
                         <div className="relative w-[52px] h-[52px] shrink-0">
                           {partner.avatarUrl ? (
-                            <img
+                            <Image
                               src={partner.avatarUrl}
                               alt={partner.displayName}
-                              className={`w-full h-full rounded-full object-cover ${
+                              fill
+                              sizes="52px"
+                              className={`rounded-full object-cover ${
                                 isThisPartnerCalling ? 'animate-pulse' : ''
                               }`}
                             />
@@ -435,7 +432,7 @@ export default function MessagesLayoutClient({
             <div className="px-4 py-3 border-b border-white/5 mb-1 flex items-center gap-3">
               <div className="w-10 h-10 rounded-full overflow-hidden bg-black shrink-0 relative">
                 {contextMenu.partner.avatarUrl ? (
-                  <img src={contextMenu.partner.avatarUrl} alt={contextMenu.partner.displayName} className="w-full h-full object-cover" />
+                  <Image src={contextMenu.partner.avatarUrl} alt={contextMenu.partner.displayName} fill sizes="40px" className="object-cover" />
                 ) : (
                   <div className={`w-full h-full bg-gradient-to-tr ${getAvatarColor(contextMenu.partner.displayName)} flex items-center justify-center font-bold text-[14px]`}>
                     {getInitials(contextMenu.partner.displayName)}

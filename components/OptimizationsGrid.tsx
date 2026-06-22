@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import Image from 'next/image';
 import { toggleOptimizationPrivacy } from '@/app/actions/optimizations';
 
 type Optimization = {
@@ -310,17 +311,18 @@ export default function OptimizationsGrid({ optimizations }: { optimizations: Op
     }
   };
 
-  // Deduplicate by file_name
-  const uniqueOptimizations: Optimization[] = [];
-  const seenNames = new Set<string>();
-  for (const opt of localOpts) {
-    if (!seenNames.has(opt.file_name)) {
-      seenNames.add(opt.file_name);
-      uniqueOptimizations.push(opt);
+  // Deduplicate by file_name using useMemo to avoid recalculation on every render
+  const displayList = useMemo(() => {
+    const unique: Optimization[] = [];
+    const seen = new Set<string>();
+    for (const opt of localOpts) {
+      if (!seen.has(opt.file_name)) {
+        seen.add(opt.file_name);
+        unique.push(opt);
+      }
     }
-  }
-
-  const displayList = uniqueOptimizations.slice(0, 5);
+    return unique.slice(0, 5);
+  }, [localOpts]);
 
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return '0 B';
@@ -368,20 +370,16 @@ export default function OptimizationsGrid({ optimizations }: { optimizations: Op
                       <span>{opt.is_public ? 'Public' : 'Private'}</span>
                     </div>
                   )}
-                  {opt.file_type?.startsWith('model/') && opt.preview_url ? (
-                    <div className="absolute inset-0 w-full h-full pointer-events-none">
-                      <ThreeViewer src={opt.preview_url} fileType={opt.file_type} showLegend={false} />
-                    </div>
-                  ) : opt.file_type?.startsWith('model/') ? (
+                  {opt.file_type?.startsWith('model/') ? (
                     <div className="w-full h-full bg-gradient-to-tr from-primary/15 to-tertiary/10 flex flex-col items-center justify-center relative p-6 group-hover:scale-105 transition-transform duration-500">
                       <div className="absolute inset-0 tech-grid opacity-20 pointer-events-none mix-blend-overlay"></div>
                       <span className="material-symbols-outlined text-[64px] text-primary mb-2">view_in_ar</span>
                       <span className="bg-primary/20 text-primary border border-primary/30 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider">
-                        {opt.file_type.split('/')[1].toUpperCase()} Model
+                        {opt.file_type.split('/')[1]?.toUpperCase() || '3D'} Model
                       </span>
                     </div>
                   ) : opt.preview_url ? (
-                    <img src={opt.preview_url} alt={opt.file_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <Image src={opt.preview_url} alt={opt.file_name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="(max-width: 768px) 100vw, 50vw" />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-tr from-surface to-surface-tint flex items-center justify-center opacity-30 group-hover:scale-105 transition-transform duration-500">
                       <span className="material-symbols-outlined text-[64px] text-on-surface-variant">
@@ -436,7 +434,7 @@ export default function OptimizationsGrid({ optimizations }: { optimizations: Op
               {selectedOpt.file_type?.startsWith('model/') && selectedOpt.preview_url ? (
                 <ThreeViewer src={selectedOpt.preview_url} fileType={selectedOpt.file_type} />
               ) : selectedOpt.preview_url ? (
-                <img src={selectedOpt.preview_url} alt={selectedOpt.file_name} className="w-full h-full object-contain rounded-lg p-4" />
+                <div className="relative w-full h-full p-4"><Image src={selectedOpt.preview_url} alt={selectedOpt.file_name} fill className="object-contain" sizes="100vw" /></div>
               ) : (
                 <span className="material-symbols-outlined text-[96px] text-on-surface-variant opacity-50">
                   {selectedOpt.file_type?.startsWith('video/') ? 'movie' : 'image'}
