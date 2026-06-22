@@ -114,6 +114,11 @@ export default async function ProfilePage() {
             </form>
           </div>
         </div>
+
+        {/* Referral Section (Full Width) */}
+        <div className="mb-12">
+          <ReferralSection userId={user.id} proUntil={profile?.pro_until} />
+        </div>
         
         {/* Stats & Layout Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -169,9 +174,7 @@ export default async function ProfilePage() {
               </div>
             </div>
 
-            {/* Referral Section */}
-            <ReferralSection userId={user.id} proUntil={profile?.pro_until} />
-          </div>
+            </div>
           
           {/* Right Content: Recent Creations Bento Grid */}
           <div className="lg:col-span-3">

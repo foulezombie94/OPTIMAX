@@ -3,7 +3,6 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
-import { createClient as createAdminClient } from '@supabase/supabase-js';
 
 export async function login(formData: FormData) {
   const supabase = await createClient();
@@ -84,25 +83,19 @@ export async function signup(formData: FormData) {
 
     if (ref) {
       try {
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-        const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-        if (supabaseServiceKey) {
-          const supabaseAdmin = createAdminClient(supabaseUrl, supabaseServiceKey);
+        const { data: refCode } = await supabase
+          .from('referral_codes')
+          .select('user_id')
+          .eq('code', ref)
+          .single();
           
-          const { data: refCode } = await supabaseAdmin
-            .from('referral_codes')
-            .select('user_id')
-            .eq('code', ref)
-            .single();
-            
-          if (refCode && refCode.user_id !== data.user.id) {
-            await supabaseAdmin.from('referrals').insert({
-              referrer_id: refCode.user_id,
-              referee_id: data.user.id,
-              status: 'registered'
-            });
-            console.log(`Referral registered: referrer ${refCode.user_id} -> referee ${data.user.id}`);
-          }
+        if (refCode && refCode.user_id !== data.user.id) {
+          await supabase.from('referrals').insert({
+            referrer_id: refCode.user_id,
+            referee_id: data.user.id,
+            status: 'registered'
+          });
+          console.log(`Referral registered: referrer ${refCode.user_id} -> referee ${data.user.id}`);
         }
       } catch (e) {
         console.error('Failed to register referral:', e);
