@@ -72,9 +72,47 @@ export async function claimReferralReward(referralId: string) {
 
   if (profileError) {
     console.error(`[Referral Claim] ❌ DB Error: Failed to add 60 days to profile for user ${user.id}:`, profileError);
-    // On pourrait théoriquement rollback le status du referral ici si on voulait être 100% safe
     return { success: false, error: 'Erreur lors de l\'attribution de la récompense' };
   }
+
+  // --- STRIPE INTEGRATION: Pause billing for 2 months ---
+  try {
+    const Stripe = (await import('stripe')).default;
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+    
+    // Rechercher l'abonnement actif de l'utilisateur
+    const subscriptions = await stripe.subscriptions.search({
+      query: `metadata['userId']:'${user.id}' AND status:'active'`,
+      limit: 1,
+    });
+
+    if (subscriptions.data.length > 0) {
+      const activeSub = subscriptions.data[0];
+      
+      console.log(`[Referral Claim] 💳 Active Stripe subscription found (${activeSub.id}). Applying 2-month 100% discount...`);
+
+      // Créer un coupon dynamique de 2 mois gratuits
+      const coupon = await stripe.coupons.create({
+        duration: 'repeating',
+        duration_in_months: 2,
+        percent_off: 100,
+        name: 'Parrainage - 2 Mois Offerts',
+      });
+
+      // Appliquer le coupon à l'abonnement
+      await stripe.subscriptions.update(activeSub.id, {
+        coupon: coupon.id,
+      });
+
+      console.log(`[Referral Claim] 💳✅ Successfully applied coupon ${coupon.id} to subscription ${activeSub.id}`);
+    } else {
+      console.log(`[Referral Claim] 💳 No active Stripe subscription found. The user will just get +60 days in database.`);
+    }
+  } catch (stripeError) {
+    console.error(`[Referral Claim] ❌ Stripe Error: Failed to apply discount for user ${user.id}:`, stripeError);
+    // On ne bloque pas le processus si Stripe échoue, car ils ont quand même eu l'update en base de données.
+  }
+  // --- END STRIPE INTEGRATION ---
 
   console.log(`[Referral Claim] ✅ Success! Added 60 days to user ${user.id} for referral ${referralId}. New pro_until: ${newProUntil}`);
 
