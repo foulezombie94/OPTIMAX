@@ -101,7 +101,7 @@ export async function claimReferralReward(referralId: string) {
 
       // Appliquer le coupon à l'abonnement
       await stripe.subscriptions.update(activeSub.id, {
-        coupon: coupon.id,
+        discounts: [{ coupon: coupon.id }],
       });
 
       console.log(`[Referral Claim] 💳✅ Successfully applied coupon ${coupon.id} to subscription ${activeSub.id}`);
