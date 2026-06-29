@@ -5,7 +5,6 @@ import Link from 'next/link';
 import OptimizationsGrid from '@/components/OptimizationsGrid';
 import T from '@/components/Translate';
 import DeactivateAccountButton from './DeactivateAccountButton';
-import ReferralSection from '@/components/ReferralSection';
 import { checkIsPro } from '@/utils/isPro';
 
 export const metadata = {
@@ -115,11 +114,6 @@ export default async function ProfilePage() {
           </div>
         </div>
 
-        {/* Referral Section (Full Width) */}
-        <div className="mb-12">
-          <ReferralSection userId={user.id} proUntil={profile?.pro_until} />
-        </div>
-        
         {/* Stats & Layout Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Left Sidebar: Stats & Links */}
@@ -162,10 +156,14 @@ export default async function ProfilePage() {
             <div className="glass-panel rounded-xl p-6">
               <h3 className="font-label-lg text-label-lg text-on-surface mb-4"><T>Account</T></h3>
               <div className="space-y-3">
-                <a className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors group" href="/pricing">
+                <Link className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors group" href="/pricing">
                   <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">credit_card</span>
                   <span className="text-body-md text-on-surface group-hover:text-primary transition-colors"><T>Subscription</T></span>
-                </a>
+                </Link>
+                <Link className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors group" href="/profile/referral">
+                  <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">group_add</span>
+                  <span className="text-body-md text-on-surface group-hover:text-primary transition-colors"><T>Parrainage</T></span>
+                </Link>
                 <a className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors group" href="#">
                   <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">mail</span>
                   <span className="text-body-md text-on-surface group-hover:text-primary transition-colors"><T>Email Settings</T></span>

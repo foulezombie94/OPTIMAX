@@ -21,8 +21,32 @@ export default async function Pricing(props: { searchParams: SearchParams }) {
         const stripe = new (await import('stripe')).default(process.env.STRIPE_SECRET_KEY!);
         const session = await stripe.checkout.sessions.retrieve(sessionId);
         if (session.payment_status === 'paid' && session.metadata?.userId === user.id) {
-          await supabase.from('profiles').update({ is_pro: true }).eq('id', user.id);
-          isPro = true;
+          const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+          const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+          const { createClient: createAdminClient } = await import('@supabase/supabase-js');
+          const supabaseAdmin = createAdminClient(supabaseUrl, supabaseServiceKey);
+          
+          const { error } = await supabaseAdmin.from('profiles').update({ is_pro: true }).eq('id', user.id);
+          if (!error) {
+            isPro = true;
+            
+            // Also trigger referral logic for local testing
+            const { data: referral } = await supabaseAdmin
+              .from('referrals')
+              .select('id, referrer_id')
+              .eq('referee_id', user.id)
+              .eq('status', 'registered')
+              .single();
+
+            if (referral) {
+              await supabaseAdmin
+                .from('referrals')
+                .update({ status: 'subscribed', completed_at: new Date().toISOString() })
+                .eq('id', referral.id);
+            }
+          } else {
+            console.error('Failed to update profile to Pro:', error);
+          }
         }
       } catch (err) {
         console.error('Error verifying Stripe session on page load:', err);

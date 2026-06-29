@@ -58,31 +58,16 @@ export async function POST(request: NextRequest) {
               .single();
 
             if (referral) {
-              // Update status to subscribed
+              // Update status to subscribed (manual claim required later)
               await supabaseAdmin
                 .from('referrals')
                 .update({ status: 'subscribed', completed_at: new Date().toISOString() })
                 .eq('id', referral.id);
-              
-              // Reward the referrer (+60 days to pro_until)
-              const { data: referrerProfile } = await supabaseAdmin
-                .from('profiles')
-                .select('pro_until')
-                .eq('id', referral.referrer_id)
-                .single();
                 
-              const currentProUntil = referrerProfile?.pro_until ? new Date(referrerProfile.pro_until).getTime() : Date.now();
-              const newProUntil = new Date(Math.max(currentProUntil, Date.now()) + 60 * 24 * 60 * 60 * 1000).toISOString();
-              
-              await supabaseAdmin
-                .from('profiles')
-                .update({ pro_until: newProUntil })
-                .eq('id', referral.referrer_id);
-                
-              console.log(`Referral completed! Awarded 60 days to referrer ${referral.referrer_id}`);
+              console.log(`Referral mapped to subscription! Referrer ${referral.referrer_id} can now claim their reward.`);
             }
           } catch (e) {
-            console.error('Failed to process referral reward:', e);
+            console.error('Failed to process referral status update:', e);
           }
           // --- END REFERRAL REWARD LOGIC ---
         }

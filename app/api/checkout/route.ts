@@ -21,24 +21,7 @@ export async function GET(request: NextRequest) {
     const requestUrl = new URL(request.url);
     const origin = requestUrl.origin;
 
-    let isReferee = false;
-    try {
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-      const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-      if (supabaseServiceKey) {
-        const { createClient: createAdminClient } = await import('@supabase/supabase-js');
-        const supabaseAdmin = createAdminClient(supabaseUrl, supabaseServiceKey);
-        const { data: referral } = await supabaseAdmin
-          .from('referrals')
-          .select('id')
-          .eq('referee_id', user.id)
-          .eq('status', 'registered')
-          .single();
-        if (referral) isReferee = true;
-      }
-    } catch (e) {
-      console.error('Error checking referral status:', e);
-    }
+
 
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
@@ -67,7 +50,6 @@ export async function GET(request: NextRequest) {
         userId: user.id,
       },
       subscription_data: {
-        ...(isReferee ? { trial_period_days: 30 } : {}),
         metadata: {
           userId: user.id,
         },
