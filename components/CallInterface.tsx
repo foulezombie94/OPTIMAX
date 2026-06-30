@@ -150,33 +150,43 @@ export default function CallInterface({
 
   if (callStatus === 'ringing-incoming') {
     return (
-      <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-[#131313] to-black text-white relative overflow-hidden animate-fade-in">
-        <div className="absolute inset-0 bg-[#f23c57]/10 animate-pulse"></div>
+      <div className="w-full h-full flex flex-col items-center justify-center bg-[#050505] text-white relative overflow-hidden animate-fade-in">
+        {/* Animated Background Orbs */}
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[#f23c57]/20 rounded-full blur-[120px] animate-pulse"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-600/20 rounded-full blur-[120px] animate-pulse" style={{animationDelay: '1s'}}></div>
+        
         <div className="relative z-10 flex flex-col items-center">
-          <div className="w-32 h-32 md:w-40 md:h-40 rounded-full bg-[#222] shadow-[0_0_50px_rgba(242,60,87,0.4)] flex items-center justify-center mb-8 border-4 border-[#f23c57]/50 overflow-hidden">
-            {partnerAvatarUrl ? (
-              <img src={partnerAvatarUrl} alt={partnerName} className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-4xl font-bold">{getInitials(partnerName)}</span>
-            )}
+          <div className="relative mb-10">
+            {/* Ripples */}
+            <div className="absolute inset-0 rounded-full border-2 border-[#f23c57]/40 animate-ping" style={{ animationDuration: '2s' }}></div>
+            <div className="absolute inset-0 rounded-full border-2 border-[#f23c57]/20 animate-ping" style={{ animationDuration: '2.5s', animationDelay: '0.5s' }}></div>
+            <div className="w-32 h-32 md:w-40 md:h-40 rounded-full bg-[#111] shadow-[0_0_60px_rgba(242,60,87,0.5)] flex items-center justify-center border-4 border-[#f23c57] overflow-hidden relative z-10">
+              {partnerAvatarUrl ? (
+                <img src={partnerAvatarUrl} alt={partnerName} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-5xl font-black">{getInitials(partnerName)}</span>
+              )}
+            </div>
           </div>
-          <h2 className="text-3xl md:text-5xl font-black mb-3">{partnerName}</h2>
-          <p className="text-lg text-[#f23c57] uppercase tracking-widest font-bold mb-16 animate-bounce">
-            Appel {callType === 'video' ? 'Vidéo' : 'Vocal'} Entrant...
+
+          <h2 className="text-4xl md:text-5xl font-black mb-4 tracking-tight drop-shadow-xl">{partnerName}</h2>
+          <p className="text-lg md:text-xl text-white/80 font-medium mb-16 flex items-center gap-3 bg-white/5 px-6 py-2 rounded-full border border-white/10 backdrop-blur-sm">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#f23c57] animate-pulse"></span>
+            Appel {callType === 'video' ? 'Vidéo' : 'Vocal'} Entrant
           </p>
           
-          <div className="flex items-center gap-10 md:gap-16">
-            <div className="flex flex-col items-center gap-3">
-              <button onClick={declineCall} className="w-16 h-16 md:w-20 md:h-20 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center transition-transform hover:scale-110 active:scale-95 shadow-[0_0_30px_rgba(220,38,38,0.5)]">
-                <span className="material-symbols-outlined text-3xl">call_end</span>
-              </button>
-              <span className="font-bold text-sm tracking-wider uppercase text-white/70">Décliner</span>
+          <div className="flex items-center gap-12 md:gap-20">
+            <div className="flex flex-col items-center gap-4 group cursor-pointer" onClick={declineCall}>
+              <div className="w-16 h-16 md:w-20 md:h-20 bg-red-600/20 backdrop-blur-md rounded-full flex items-center justify-center transition-all group-hover:bg-red-600 group-hover:scale-110 active:scale-95 border border-red-500/50 shadow-[0_0_30px_rgba(220,38,38,0.3)] group-hover:shadow-[0_0_40px_rgba(220,38,38,0.8)]">
+                <span className="material-symbols-outlined text-3xl md:text-4xl text-red-500 group-hover:text-white transition-colors">call_end</span>
+              </div>
+              <span className="font-bold text-xs md:text-sm tracking-widest uppercase text-white/50 group-hover:text-red-400 transition-colors">Refuser</span>
             </div>
-            <div className="flex flex-col items-center gap-3">
-              <button onClick={acceptCall} className="w-16 h-16 md:w-20 md:h-20 bg-emerald-500 hover:bg-emerald-600 rounded-full flex items-center justify-center transition-transform hover:scale-110 active:scale-95 shadow-[0_0_30px_rgba(16,185,129,0.5)]">
-                <span className="material-symbols-outlined text-3xl">call</span>
-              </button>
-              <span className="font-bold text-sm tracking-wider uppercase text-white/70">Accepter</span>
+            <div className="flex flex-col items-center gap-4 group cursor-pointer" onClick={acceptCall}>
+              <div className="w-16 h-16 md:w-20 md:h-20 bg-emerald-500/20 backdrop-blur-md rounded-full flex items-center justify-center transition-all group-hover:bg-emerald-500 group-hover:scale-110 active:scale-95 border border-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.3)] group-hover:shadow-[0_0_40px_rgba(16,185,129,0.8)]">
+                <span className="material-symbols-outlined text-3xl md:text-4xl text-emerald-400 group-hover:text-white transition-colors">call</span>
+              </div>
+              <span className="font-bold text-xs md:text-sm tracking-widest uppercase text-white/50 group-hover:text-emerald-400 transition-colors">Accepter</span>
             </div>
           </div>
         </div>
@@ -186,24 +196,32 @@ export default function CallInterface({
 
   if (callStatus === 'ringing-outgoing') {
     return (
-      <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-[#131313] to-black text-white relative overflow-hidden animate-fade-in">
+      <div className="w-full h-full flex flex-col items-center justify-center bg-[#050505] text-white relative overflow-hidden animate-fade-in">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60%] h-[60%] bg-blue-500/10 rounded-full blur-[150px]"></div>
+        
         <div className="relative z-10 flex flex-col items-center">
-          <div className="w-32 h-32 md:w-40 md:h-40 rounded-full bg-[#222] shadow-[0_0_50px_rgba(255,255,255,0.1)] flex items-center justify-center mb-8 overflow-hidden">
-            {partnerAvatarUrl ? (
-              <img src={partnerAvatarUrl} alt={partnerName} className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-4xl font-bold">{getInitials(partnerName)}</span>
-            )}
+          <div className="relative mb-8">
+            <div className="absolute inset-0 rounded-full border border-blue-500/30 animate-ping" style={{ animationDuration: '2s' }}></div>
+            <div className="w-28 h-28 md:w-36 md:h-36 rounded-full bg-[#111] shadow-[0_0_40px_rgba(255,255,255,0.05)] flex items-center justify-center border-2 border-white/10 overflow-hidden relative z-10">
+              {partnerAvatarUrl ? (
+                <img src={partnerAvatarUrl} alt={partnerName} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-4xl md:text-5xl font-bold text-white/80">{getInitials(partnerName)}</span>
+              )}
+            </div>
           </div>
-          <h2 className="text-3xl md:text-4xl font-bold mb-3">{partnerName}</h2>
-          <p className="text-sm text-white/60 uppercase tracking-widest font-mono mb-16 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping"></span>
+
+          <h2 className="text-3xl md:text-4xl font-bold mb-4 tracking-tight">{partnerName}</h2>
+          <p className="text-sm md:text-base text-white/60 font-medium mb-16 flex items-center gap-3 bg-white/5 px-5 py-2 rounded-full border border-white/5">
+            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
             Sonnerie en cours...
           </p>
           
-          <button onClick={endCall} className="w-16 h-16 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center transition-transform hover:scale-110 active:scale-95 shadow-[0_0_30px_rgba(220,38,38,0.5)]">
-            <span className="material-symbols-outlined text-3xl">call_end</span>
-          </button>
+          <div className="flex flex-col items-center gap-3 group cursor-pointer" onClick={endCall}>
+             <div className="w-16 h-16 bg-red-600/20 backdrop-blur-md hover:bg-red-600 rounded-full flex items-center justify-center transition-all group-hover:scale-110 active:scale-95 border border-red-500/30 hover:border-red-500 shadow-[0_0_30px_rgba(220,38,38,0.2)] hover:shadow-[0_0_30px_rgba(220,38,38,0.6)]">
+               <span className="material-symbols-outlined text-3xl text-red-500 group-hover:text-white transition-colors">call_end</span>
+             </div>
+          </div>
         </div>
       </div>
     );
@@ -263,6 +281,7 @@ function ConnectedCallUI({
 
   const { send, chatMessages } = useChat();
   const [input, setInput] = useState('');
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -344,7 +363,7 @@ function ConnectedCallUI({
       </nav>
 
       {/* Main Content Area */}
-      <main className="relative z-10 w-full h-full flex pt-24 pb-32 px-5 md:px-10 gap-10">
+      <main className="relative z-10 w-full h-full flex pt-20 pb-24 md:pt-24 md:pb-32 px-4 md:px-10 lg:pr-[380px]">
         
         {/* Center Canvas / Video Area */}
         <div className="flex-1 flex flex-col relative h-full">
@@ -378,20 +397,33 @@ function ConnectedCallUI({
           )}
         </div>
 
-        {/* SideNavBar (Chat) */}
-        <aside className="fixed right-0 top-1/2 -translate-y-1/2 z-40 hidden lg:flex flex-col h-[calc(100vh-120px)] w-[350px] rounded-2xl m-5 bg-white/5 backdrop-blur-2xl border border-white/20 shadow-2xl transition-all duration-300">
-          <div className="p-5 border-b border-white/10 flex items-center gap-3">
-             <div className="w-10 h-10 rounded-full bg-[#222] shrink-0 overflow-hidden flex items-center justify-center">
-               {partnerAvatarUrl ? (
-                 <img src={partnerAvatarUrl} className="w-full h-full object-cover" alt="partner"/>
-               ) : (
-                 <span className="font-bold text-white text-[14px]">{getInitials(partnerName)}</span>
-               )}
-             </div>
-             <div>
-                <h2 className="text-[18px] font-bold text-white mb-0.5">{partnerName}</h2>
-                <p className="text-[13px] text-[#8c909f]">Appel Sécurisé (LiveKit)</p>
-             </div>
+        {/* Chat Drawer/Sidebar */}
+        <aside className={`
+          fixed z-40 transition-all duration-300 ease-in-out border border-white/10 bg-[#0a0a0a]/95 backdrop-blur-3xl shadow-2xl flex flex-col
+          lg:right-0 lg:top-1/2 lg:-translate-y-1/2 lg:h-[calc(100vh-120px)] lg:w-[350px] lg:rounded-2xl lg:m-5
+          ${isChatOpen ? 'bottom-0 left-0 w-full h-[65vh] rounded-t-3xl' : '-bottom-[100%] left-0 w-full h-[65vh] rounded-t-3xl lg:bottom-auto'}
+        `}>
+          <div className="p-4 md:p-5 border-b border-white/10 flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-[#222] shrink-0 overflow-hidden flex items-center justify-center">
+                {partnerAvatarUrl ? (
+                  <img src={partnerAvatarUrl} className="w-full h-full object-cover" alt="partner"/>
+                ) : (
+                  <span className="font-bold text-white text-[14px]">{getInitials(partnerName)}</span>
+                )}
+              </div>
+              <div>
+                 <h2 className="text-[16px] md:text-[18px] font-bold text-white mb-0.5">{partnerName}</h2>
+                 <p className="text-[12px] md:text-[13px] text-[#8c909f]">Chat éphémère privé</p>
+              </div>
+            </div>
+            {/* Close button for mobile */}
+            <button 
+              className="lg:hidden w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 active:scale-95 transition-all"
+              onClick={() => setIsChatOpen(false)}
+            >
+              <span className="material-symbols-outlined text-sm">close</span>
+            </button>
           </div>
           
           <div className="flex-grow overflow-y-auto p-4 space-y-4 scrollbar-none">
@@ -435,20 +467,24 @@ function ConnectedCallUI({
       </main>
 
       {/* BottomNavBar */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 md:gap-4 px-4 md:px-6 py-2 mb-6 md:mb-10 bg-white/10 backdrop-blur-xl rounded-full max-w-fit mx-auto border border-white/20 shadow-2xl">
-        <button onClick={toggleMic} className={`flex flex-col items-center justify-center w-12 h-12 md:w-14 md:h-14 rounded-full hover:bg-white/20 transition-all active:scale-90 cursor-pointer ${!isMicOn ? 'bg-white/20 text-white' : 'text-[#e5e2e1]'}`}>
+      <div className={`fixed bottom-0 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 md:gap-4 px-3 md:px-6 py-2 mb-6 md:mb-10 bg-white/10 backdrop-blur-xl rounded-full max-w-[95%] md:max-w-fit mx-auto border border-white/20 shadow-2xl transition-transform duration-300 ${isChatOpen ? 'translate-y-32 lg:translate-y-0' : 'translate-y-0'}`}>
+        <button onClick={toggleMic} className={`flex flex-col items-center justify-center w-12 h-12 md:w-14 md:h-14 rounded-full hover:bg-white/20 transition-all active:scale-90 cursor-pointer shrink-0 ${!isMicOn ? 'bg-white/20 text-white' : 'text-[#e5e2e1]'}`}>
           <span className="material-symbols-outlined text-[20px] md:text-[24px]">{isMicOn ? 'mic' : 'mic_off'}</span>
         </button>
         
         {callType === 'video' && (
-          <button onClick={toggleVideo} className={`flex flex-col items-center justify-center rounded-full w-14 h-14 md:w-16 md:h-16 scale-110 shadow-[0_0_20px_rgba(242,60,87,0.4)] transition-all active:scale-90 cursor-pointer ${isVideoOn ? 'bg-[#f23c57] text-white' : 'bg-white/20 text-white'}`}>
+          <button onClick={toggleVideo} className={`flex flex-col items-center justify-center rounded-full w-14 h-14 md:w-16 md:h-16 scale-110 shadow-[0_0_20px_rgba(242,60,87,0.4)] transition-all active:scale-90 cursor-pointer shrink-0 ${isVideoOn ? 'bg-[#f23c57] text-white' : 'bg-white/20 text-white'}`}>
             <span className="material-symbols-outlined text-[24px] md:text-[26px]" style={{fontVariationSettings: "'FILL' 1"}}>{isVideoOn ? 'videocam' : 'videocam_off'}</span>
           </button>
         )}
         
-        <div className="w-px h-8 bg-white/20 mx-1 md:mx-2"></div>
+        <button onClick={() => setIsChatOpen(!isChatOpen)} className={`lg:hidden flex flex-col items-center justify-center w-12 h-12 md:w-14 md:h-14 rounded-full hover:bg-white/20 transition-all active:scale-90 cursor-pointer shrink-0 ${isChatOpen ? 'bg-[#f23c57] text-white' : 'bg-white/10 text-white'}`}>
+          <span className="material-symbols-outlined text-[20px] md:text-[24px]">{isChatOpen ? 'forum' : 'chat'}</span>
+        </button>
+
+        <div className="w-px h-8 bg-white/20 mx-1 md:mx-2 shrink-0"></div>
         
-        <button onClick={endCall} className="flex items-center justify-center bg-red-600 text-white rounded-full px-5 py-3 md:px-6 md:py-3 hover:bg-red-700 transition-all shadow-[0_0_20px_rgba(220,38,38,0.5)] active:scale-90 cursor-pointer">
+        <button onClick={endCall} className="flex items-center justify-center bg-red-600 text-white rounded-full px-4 py-3 md:px-6 md:py-3 hover:bg-red-700 transition-all shadow-[0_0_20px_rgba(220,38,38,0.5)] active:scale-90 cursor-pointer shrink-0">
           <span className="material-symbols-outlined text-[22px] md:mr-2">call_end</span>
           <span className="text-[13px] font-bold tracking-wider hidden md:block">QUITTER</span>
         </button>

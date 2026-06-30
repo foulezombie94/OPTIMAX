@@ -153,15 +153,15 @@ export default function TicTacToe({ partnerName }: { partnerName: string }) {
           )}
         </div>
 
-        <div className="grid grid-cols-3 gap-2 md:gap-3 bg-white/5 p-3 rounded-2xl">
+        <div className="grid grid-cols-3 gap-2 md:gap-3 bg-white/5 p-2 sm:p-3 rounded-2xl">
           {board.map((cell, i) => (
             <button
               key={i}
               onClick={() => handleClick(i)}
               disabled={!!winner || !!cell}
-              className={`w-20 h-20 md:w-24 md:h-24 rounded-xl flex items-center justify-center text-5xl md:text-6xl font-black transition-all duration-300
+              className={`w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-xl flex items-center justify-center text-4xl sm:text-5xl md:text-6xl font-black transition-all duration-300
                 ${!cell && !winner ? 'hover:bg-white/10 active:scale-95 cursor-pointer bg-black/40' : 'bg-black/60'}
-                ${cell === 'X' ? 'text-[#f23c57] shadow-[inset_0_0_20px_rgba(242,60,87,0.2)]' : cell === 'O' ? 'text-blue-400 shadow-[inset_0_0_20px_rgba(96,165,250,0.2)]' : ''}
+                ${cell === 'X' ? 'text-[#f23c57] shadow-[inset_0_0_15px_rgba(242,60,87,0.2)]' : cell === 'O' ? 'text-blue-400 shadow-[inset_0_0_15px_rgba(96,165,250,0.2)]' : ''}
               `}
             >
               {cell}
