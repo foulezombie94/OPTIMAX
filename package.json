@@ -11,6 +11,8 @@
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
+    "@giphy/js-fetch-api": "^5.8.0",
+    "@giphy/react-components": "^10.1.2",
     "@sruim/mesh-flow": "^0.0.3",
     "@stripe/stripe-js": "^9.8.0",
     "@supabase/ssr": "^0.12.0",

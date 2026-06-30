@@ -5,6 +5,18 @@ import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
 import CustomVideoPlayer from './CustomVideoPlayer';
 
+// Simulation de GIFs pour le prototype (Évite les erreurs 403 d'API)
+const MOCK_GIFS = [
+  "https://media.giphy.com/media/JIX9t2j0ZTN9S/giphy.gif",
+  "https://media.giphy.com/media/11ISwbgCxEzMyY/giphy.gif",
+  "https://media.giphy.com/media/3oKIPa2TdahYIGany8/giphy.gif",
+  "https://media.giphy.com/media/26AHONQ79FdWZhAI0/giphy.gif",
+  "https://media.giphy.com/media/xT0xezQGU5xCDJuCPe/giphy.gif",
+  "https://media.giphy.com/media/3o7TKSjRrfIPjeiVyM/giphy.gif",
+  "https://media.giphy.com/media/l0HlOBZcl7mbj5I6s/giphy.gif",
+  "https://media.giphy.com/media/26gskj8FpG7T0hM9G/giphy.gif"
+];
+
 const POPULAR_EMOJIS = [
   '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇',
   '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚',
@@ -199,6 +211,8 @@ export default function ChatWindow({
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showGifPicker, setShowGifPicker] = useState(false);
+  const [gifSearch, setGifSearch] = useState('');
 
   // Recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -536,18 +550,18 @@ export default function ChatWindow({
 
         <div className="flex items-center gap-5 pr-2">
           {/* Call Actions */}
-          <button 
-            onClick={() => startCall('audio')}
-            className="text-white flex items-center justify-center cursor-pointer"
+          <Link 
+            href={`/call/${partnerId}`}
+            className="text-white flex items-center justify-center cursor-pointer hover:text-[#f23c57] transition-colors"
           >
             <span className="material-symbols-outlined text-[28px]" style={{fontVariationSettings: "'FILL' 1"}}>call</span>
-          </button>
-          <button 
-            onClick={() => startCall('video')}
-            className="text-white flex items-center justify-center cursor-pointer"
+          </Link>
+          <Link 
+            href={`/call/${partnerId}`}
+            className="text-white flex items-center justify-center cursor-pointer hover:text-[#f23c57] transition-colors"
           >
             <span className="material-symbols-outlined text-[32px]" style={{fontVariationSettings: "'FILL' 1"}}>videocam</span>
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -728,7 +742,7 @@ export default function ChatWindow({
         </button>
 
         {/* Input Pill */}
-        <form onSubmit={sendMessage} className="flex-grow flex items-center bg-transparent border border-[#444] rounded-full px-4 py-1.5 min-h-[42px] focus-within:border-[#666] transition-colors relative">
+        <form id="chat-form" onSubmit={sendMessage} className="flex-grow flex items-center bg-transparent border border-[#444] rounded-full px-4 py-1.5 min-h-[42px] focus-within:border-[#666] transition-colors relative">
           {isUploading ? (
             <div className="w-full flex items-center justify-center h-[24px] pt-1">
               <div className="w-5 h-5 border-2 border-[#f23c57] border-t-transparent rounded-full animate-spin"></div>
@@ -793,7 +807,58 @@ export default function ChatWindow({
           <div className="relative">
             <button 
               type="button" 
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              onClick={() => { setShowGifPicker(!showGifPicker); setShowEmojiPicker(false); }}
+              className="text-white hover:text-[#ccc] transition-colors flex items-center justify-center cursor-pointer font-bold text-[14px] bg-[#333] hover:bg-[#444] px-2.5 py-1 rounded-md"
+            >
+              GIF
+            </button>
+            
+            {showGifPicker && (
+              <div className="absolute bottom-12 right-0 bg-[#1c1c1e] border border-[#333] rounded-2xl shadow-2xl z-20 w-80 h-96 flex flex-col overflow-hidden select-none">
+                <div className="p-3 bg-[#222] border-b border-[#333] flex justify-between items-center">
+                  <input 
+                    type="text" 
+                    value={gifSearch}
+                    onChange={(e) => setGifSearch(e.target.value)}
+                    placeholder="Rechercher un GIF..." 
+                    className="flex-grow bg-[#111] border border-[#333] rounded-lg px-3 py-1.5 text-white text-[14px] outline-none focus:border-[#f23c57] transition-colors mr-2"
+                  />
+                  <button 
+                    type="button" 
+                    onClick={() => setShowGifPicker(false)}
+                    className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[#333] text-[#888] hover:text-white transition-colors cursor-pointer shrink-0"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">close</span>
+                  </button>
+                </div>
+                <div className="flex-grow overflow-y-auto scrollbar-thin scrollbar-thumb-[#444] scrollbar-track-transparent bg-[#111] p-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    {MOCK_GIFS.map((url, i) => (
+                      <div 
+                        key={i}
+                        onClick={() => {
+                          setShowGifPicker(false);
+                          setInput(`[Image] ${url}`);
+                          setTimeout(() => {
+                             const form = document.getElementById('chat-form') as HTMLFormElement;
+                             if (form) form.requestSubmit();
+                          }, 50);
+                        }}
+                        className="cursor-pointer overflow-hidden rounded-lg border border-transparent hover:border-[#f23c57] transition-colors"
+                      >
+                        <img src={url} alt="GIF" className="w-full h-24 object-cover" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="relative">
+            <button 
+              type="button" 
+              onClick={() => { setShowEmojiPicker(!showEmojiPicker); setShowGifPicker(false); }}
               className="text-white hover:text-[#ccc] transition-colors flex items-center justify-center cursor-pointer"
             >
               <span className="material-symbols-outlined text-[28px]" style={{fontVariationSettings: "'FILL' 0, 'wght' 300"}}>sentiment_satisfied</span>

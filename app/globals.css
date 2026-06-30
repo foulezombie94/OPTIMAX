@@ -316,3 +316,29 @@ body {
 .tech-card-glow:hover {
   box-shadow: 0 0 40px rgba(78, 222, 163, 0.18);
 }
+
+/* Lumina Video Call UI */
+.neo-glass-panel {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.neo-glass-overlay {
+    background: rgba(255, 255, 255, 0.10);
+    backdrop-filter: blur(40px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.glow-accent {
+    box-shadow: 0 0 15px rgba(242, 60, 87, 0.4);
+}
+.glow-accent-active {
+    box-shadow: 0 0 20px rgba(242, 60, 87, 0.6);
+}
+.live-pulse {
+    animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+@keyframes pulse-ring {
+    0% { box-shadow: 0 0 0 0 rgba(242, 60, 87, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(242, 60, 87, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(242, 60, 87, 0); }
+}
