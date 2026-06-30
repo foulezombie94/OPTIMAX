@@ -5,6 +5,7 @@ import Link from 'next/link';
 import OptimizationsGrid from '@/components/OptimizationsGrid';
 import T from '@/components/Translate';
 import DeactivateAccountButton from './DeactivateAccountButton';
+import StripeConnectButton from './StripeConnectButton';
 import { checkIsPro } from '@/utils/isPro';
 
 export const metadata = {
@@ -21,7 +22,7 @@ export default async function ProfilePage() {
 
   // Fetch profile and stats in parallel
   const [profileResult, optimizationsResult] = await Promise.all([
-    supabase.from('profiles').select('id, username, is_pro, pro_until, location, website, created_at, deactivated_at').eq('id', user.id).single(),
+    supabase.from('profiles').select('id, username, is_pro, pro_until, location, website, created_at, deactivated_at, stripe_account_id').eq('id', user.id).single(),
     supabase.from('optimizations').select('id, file_name, original_size, compressed_size, file_type, created_at, preview_url, is_public, views, likes, shares').eq('user_id', user.id).order('created_at', { ascending: false }).limit(50)
   ]);
 
@@ -151,7 +152,7 @@ export default async function ProfilePage() {
                 </div>
               </div>
             </div>
-            
+
             {/* Account Management Links */}
             <div className="glass-panel rounded-xl p-6">
               <h3 className="font-label-lg text-label-lg text-on-surface mb-4"><T>Account</T></h3>
@@ -164,6 +165,7 @@ export default async function ProfilePage() {
                   <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">group_add</span>
                   <span className="text-body-md text-on-surface group-hover:text-primary transition-colors"><T>Parrainage</T></span>
                 </Link>
+                <StripeConnectButton isConnected={!!profile?.stripe_account_id} />
                 <a className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors group" href="#">
                   <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors">mail</span>
                   <span className="text-body-md text-on-surface group-hover:text-primary transition-colors"><T>Email Settings</T></span>

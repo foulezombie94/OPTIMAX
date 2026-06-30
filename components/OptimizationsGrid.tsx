@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import Image from 'next/image';
-import { toggleOptimizationPrivacy } from '@/app/actions/optimizations';
+import { toggleOptimizationPrivacy, updateOptimizationPrice } from '@/app/actions/optimizations';
 
 type Optimization = {
   id: string;
@@ -13,6 +13,7 @@ type Optimization = {
   created_at: string;
   preview_url?: string;
   is_public?: boolean;
+  price?: number;
   views?: number;
   likes?: number;
   shares?: number;
@@ -282,6 +283,8 @@ export function ThreeViewer({
 export default function OptimizationsGrid({ optimizations }: { optimizations: Optimization[] }) {
   const [localOpts, setLocalOpts] = useState<Optimization[]>(optimizations);
   const [selectedOpt, setSelectedOpt] = useState<Optimization | null>(null);
+  const [editingPrice, setEditingPrice] = useState(false);
+  const [priceInput, setPriceInput] = useState('0');
 
   useEffect(() => {
     setLocalOpts(optimizations);
@@ -357,7 +360,11 @@ export default function OptimizationsGrid({ optimizations }: { optimizations: Op
             return (
               <div 
                 key={opt.id} 
-                onClick={() => setSelectedOpt(opt)}
+                onClick={() => {
+                  setSelectedOpt(opt);
+                  setPriceInput(opt.price?.toString() || '0');
+                  setEditingPrice(false);
+                }}
                 className={`glass-panel rounded-xl overflow-hidden group cursor-pointer ${isFirst ? 'md:col-span-2' : ''}`}
               >
                 <div className={`relative w-full overflow-hidden ${isFirst ? 'h-64 md:h-80' : 'h-48'}`}>
@@ -513,21 +520,75 @@ export default function OptimizationsGrid({ optimizations }: { optimizations: Op
                 </div>
               </div>
 
-              {/* Privacy Toggle (only for 3D models) */}
+              {/* Privacy & Marketplace Toggle (only for 3D models) */}
               {selectedOpt.file_type?.startsWith('model/') && (
-                <div className="border-t border-white/5 pt-6 mt-6 flex items-center justify-between">
-                  <div>
-                    <p className="font-label-md text-label-md text-on-surface font-semibold">Publier dans la communauté</p>
-                    <p className="text-[11px] text-on-surface-variant max-w-[180px] mt-0.5 leading-relaxed">Permettre aux autres de voir, pivoter et aimer ce modèle.</p>
+                <div className="border-t border-white/5 pt-6 mt-6 space-y-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-label-md text-label-md text-on-surface font-semibold">Publier dans la communauté</p>
+                      <p className="text-[11px] text-on-surface-variant max-w-[180px] mt-0.5 leading-relaxed">Permettre aux autres de voir, pivoter et aimer ce modèle.</p>
+                    </div>
+                    <button
+                      onClick={handleTogglePrivacy}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none ${selectedOpt.is_public ? 'bg-emerald-500' : 'bg-white/10 border border-white/10'}`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 ${selectedOpt.is_public ? 'translate-x-6' : 'translate-x-1'}`}
+                      />
+                    </button>
                   </div>
-                  <button
-                    onClick={handleTogglePrivacy}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none ${selectedOpt.is_public ? 'bg-emerald-500' : 'bg-white/10 border border-white/10'}`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 ${selectedOpt.is_public ? 'translate-x-6' : 'translate-x-1'}`}
-                    />
-                  </button>
+
+                  {selectedOpt.is_public && (
+                    <div className="flex items-center justify-between bg-surface/30 p-4 rounded-xl border border-white/5">
+                      <div>
+                        <p className="font-label-md text-label-md text-on-surface font-semibold flex items-center gap-1.5">
+                          Prix de vente <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded font-bold uppercase">Stripe</span>
+                        </p>
+                        <p className="text-[11px] text-on-surface-variant max-w-[180px] mt-0.5 leading-relaxed">Fixez un prix pour rendre ce modèle payant.</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {editingPrice ? (
+                          <div className="flex items-center gap-2">
+                            <input 
+                              type="number" 
+                              value={priceInput}
+                              onChange={(e) => setPriceInput(e.target.value)}
+                              min="0"
+                              step="0.5"
+                              className="w-16 bg-[#070709] border border-white/10 rounded-lg px-2 py-1 text-on-surface text-center font-label-md outline-none focus:border-emerald-500 transition-colors"
+                            />
+                            <span className="text-on-surface-variant font-bold">€</span>
+                            <button 
+                              className="ml-1 w-7 h-7 flex items-center justify-center bg-emerald-500/20 text-emerald-400 rounded-full hover:bg-emerald-500/30 transition-colors"
+                              onClick={async () => {
+                                const newPrice = parseFloat(priceInput);
+                                if (!isNaN(newPrice)) {
+                                  setSelectedOpt(prev => prev ? { ...prev, price: newPrice } : null);
+                                  setLocalOpts(prev => prev.map(o => o.id === selectedOpt.id ? { ...o, price: newPrice } : o));
+                                  setEditingPrice(false);
+                                  await updateOptimizationPrice(selectedOpt.id, newPrice);
+                                }
+                              }}
+                            >
+                              <span className="material-symbols-outlined text-[16px]">check</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-3">
+                            <span className={`font-bold font-display text-lg ${selectedOpt.price ? 'text-emerald-400' : 'text-on-surface-variant'}`}>
+                              {selectedOpt.price ? `${selectedOpt.price} €` : 'Gratuit'}
+                            </span>
+                            <button 
+                              className="w-8 h-8 flex items-center justify-center bg-white/5 text-on-surface rounded-full hover:bg-white/10 transition-colors"
+                              onClick={() => setEditingPrice(true)}
+                            >
+                              <span className="material-symbols-outlined text-[16px]">edit</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

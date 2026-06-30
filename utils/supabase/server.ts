@@ -1,7 +1,7 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-export async function createClient() {
+export async function createClient(overrides?: { keepSignedIn?: boolean }) {
   const cookieStore = await cookies()
 
   return createServerClient(
@@ -14,9 +14,14 @@ export async function createClient() {
         },
         setAll(cookiesToSet) {
           try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            )
+            cookiesToSet.forEach(({ name, value, options }) => {
+              const finalOptions = { ...options }
+              if (overrides?.keepSignedIn === false) {
+                delete finalOptions.maxAge
+                delete finalOptions.expires
+              }
+              cookieStore.set(name, value, finalOptions)
+            })
           } catch {
             // The `setAll` method was called from a Server Component.
             // This can be ignored if you have middleware refreshing

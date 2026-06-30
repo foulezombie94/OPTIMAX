@@ -228,6 +228,7 @@ function LoginContent() {
                       <label className="flex items-center gap-2 cursor-pointer group">
                         <div className="relative flex items-center justify-center w-5 h-5">
                           <input 
+                            name="keepSignedIn"
                             defaultChecked 
                             className="peer appearance-none w-5 h-5 border border-white/20 rounded-md bg-transparent checked:bg-primary checked:border-primary transition-all cursor-pointer" 
                             type="checkbox" 

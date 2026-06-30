@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ThreeViewer } from '@/components/OptimizationsGrid';
 import { PublicOptimization } from './types';
+import { getOptimizationDetails } from '@/app/actions/community';
 
 type CommunityModalProps = {
   item: PublicOptimization | null;
@@ -20,9 +21,27 @@ const formatBytes = (bytes: number) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 };
 
-export function CommunityModal({ item, isClosing, onClose, likedItems, onLike, onShare }: CommunityModalProps) {
+export function CommunityModal({ item: initialItem, isClosing, onClose, likedItems, onLike, onShare }: CommunityModalProps) {
+  const [item, setItem] = useState<PublicOptimization | null>(initialItem);
+  const [hasPurchased, setHasPurchased] = useState(false);
+  const [isCheckingPurchase, setIsCheckingPurchase] = useState(true);
+
   useEffect(() => {
-    if (item) {
+    setItem(initialItem);
+    setHasPurchased(false);
+    if (initialItem) {
+      // Check purchase status and get full details if needed
+      setIsCheckingPurchase(true);
+      getOptimizationDetails(initialItem.id).then((res) => {
+        if (res.data) {
+          setItem({ ...initialItem, ...res.data });
+        }
+        if (res.hasPurchased) {
+          setHasPurchased(true);
+        }
+        setIsCheckingPurchase(false);
+      });
+
       const header = document.getElementById('main-header');
       if (header) {
         header.style.transform = 'translate(-50%, -150%)'; // -50% for the left-1/2 -translate-x-1/2
@@ -39,7 +58,7 @@ export function CommunityModal({ item, isClosing, onClose, likedItems, onLike, o
         header.style.pointerEvents = 'auto';
       }
     };
-  }, [item]);
+  }, [initialItem]);
 
   if (!item) return null;
 
@@ -62,13 +81,31 @@ export function CommunityModal({ item, isClosing, onClose, likedItems, onLike, o
           {/* Tech scan grid lines */}
           <div className="absolute inset-0 tech-grid opacity-30 pointer-events-none"></div>
           
-          <ThreeViewer src={item.preview_url} fileType={item.file_type} />
+          {item.price && item.price > 0 && !hasPurchased ? (
+            <div className="flex flex-col items-center justify-center space-y-4 text-center p-8 relative z-10">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary/20 to-tertiary/10 flex items-center justify-center border border-primary/30 shadow-[0_0_30px_rgba(16,185,129,0.2)] mb-2">
+                <span className="material-symbols-outlined text-[48px] text-emerald-400">lock</span>
+              </div>
+              <h3 className="font-display font-black text-2xl text-on-surface">Modèle Premium</h3>
+              <p className="text-on-surface-variant font-medium max-w-sm">
+                Achetez ce modèle pour débloquer la vue 3D interactive et télécharger les fichiers sources.
+              </p>
+            </div>
+          ) : item.preview_url ? (
+            <ThreeViewer src={item.preview_url} fileType={item.file_type} />
+          ) : isCheckingPurchase ? (
+            <div className="flex flex-col items-center justify-center space-y-4 text-center p-8">
+              <span className="material-symbols-outlined text-[48px] text-emerald-400 animate-spin">autorenew</span>
+            </div>
+          ) : null}
           
           {/* Visualizer Badge */}
-          <div className="absolute bottom-5 left-5 bg-background/70 backdrop-blur-md border border-white/10 px-4 py-2 rounded-full text-on-surface-variant text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 select-none shadow-lg">
-            <span className="material-symbols-outlined text-[15px] text-emerald-400">view_in_ar</span>
-            Rendu WebGL 3D
-          </div>
+          {item.preview_url && (
+            <div className="absolute bottom-5 left-5 bg-background/70 backdrop-blur-md border border-white/10 px-4 py-2 rounded-full text-on-surface-variant text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 select-none shadow-lg z-20">
+              <span className="material-symbols-outlined text-[15px] text-emerald-400">view_in_ar</span>
+              Rendu WebGL 3D
+            </div>
+          )}
         </div>
         
         {/* Details & Interactive Actions (Right Panel) */}
@@ -139,15 +176,25 @@ export function CommunityModal({ item, isClosing, onClose, likedItems, onLike, o
               </button>
             </div>
             
-            {/* Direct Download */}
-            <a
-              href={item.preview_url}
-              download={`optimax_${item.file_name}`}
-              className="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 text-neutral-900 font-label-md text-label-md font-bold flex items-center justify-center gap-2 select-none shadow-[0_4px_20px_rgba(78,222,163,0.25)] hover:shadow-[0_4px_35px_rgba(78,222,163,0.4)] active:scale-[0.98] transition-all hover:brightness-110"
-            >
-              <span className="material-symbols-outlined text-[18px] font-bold">download</span>
-              Télécharger le modèle 3D
-            </a>
+            {/* Direct Download or Purchase Button */}
+            {item.price && item.price > 0 && !hasPurchased ? (
+              <Link
+                href={`/checkout/${item.id}`}
+                className="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-400 text-neutral-900 font-label-md text-label-md font-bold flex items-center justify-center gap-2 select-none shadow-[0_4px_20px_rgba(78,222,163,0.25)] hover:shadow-[0_4px_35px_rgba(78,222,163,0.4)] active:scale-[0.98] transition-all hover:brightness-110 disabled:opacity-70 disabled:active:scale-100 disabled:pointer-events-none"
+              >
+                <span className="material-symbols-outlined text-[18px] font-bold">shopping_cart</span>
+                Acheter avec Stripe - {item.price} €
+              </Link>
+            ) : item.preview_url ? (
+              <a
+                href={item.preview_url}
+                download={`optimax_${item.file_name}`}
+                className="w-full py-4 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/20 text-on-surface font-label-md text-label-md font-bold flex items-center justify-center gap-2 select-none active:scale-[0.98] transition-all"
+              >
+                <span className="material-symbols-outlined text-[18px] font-bold text-emerald-400">download</span>
+                Télécharger le modèle 3D
+              </a>
+            ) : null}
           </div>
         </div>
       </div>

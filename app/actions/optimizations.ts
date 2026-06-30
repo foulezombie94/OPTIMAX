@@ -58,3 +58,27 @@ export async function toggleOptimizationPrivacy(id: string, isPublic: boolean) {
   revalidatePath('/community');
   return { success: true };
 }
+
+export async function updateOptimizationPrice(id: string, price: number) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: 'Unauthorized' };
+  }
+
+  const { error } = await supabase
+    .from('optimizations')
+    .update({ price })
+    .eq('id', id)
+    .eq('user_id', user.id);
+
+  if (error) {
+    console.error('Failed to update optimization price:', error);
+    return { error: error.message };
+  }
+
+  revalidatePath('/profile');
+  revalidatePath('/community');
+  return { success: true };
+}

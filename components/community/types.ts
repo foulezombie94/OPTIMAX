@@ -14,4 +14,6 @@ export type PublicOptimization = {
   creator_is_pro: boolean;
   popularity_score: number;
   fileTypeLabel?: string;
+  price?: number;
+  has_purchased?: boolean;
 };

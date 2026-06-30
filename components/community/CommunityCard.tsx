@@ -118,9 +118,16 @@ export function CommunityCard({ item, isLiked, onOpen, onLike, onShare, isFirst 
           </span>
         )}
         
-        <span className="absolute top-5 right-5 bg-background/50 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-[0.15em] text-white">
-          {fileTypeLabel}
-        </span>
+        <div className="absolute top-5 right-5 flex flex-col gap-2 items-end">
+          <span className="bg-background/50 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-[0.15em] text-white">
+            {fileTypeLabel}
+          </span>
+          {item.price && item.price > 0 ? (
+            <span className="bg-primary/20 backdrop-blur-md border border-primary/30 px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wider text-primary shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+              {item.price} €
+            </span>
+          ) : null}
+        </div>
 
         <div className="absolute bottom-5 left-5 bg-background/70 backdrop-blur-md border border-white/10 px-4 py-2 rounded-2xl text-on-surface-variant text-[12px] font-bold flex items-center gap-2 shadow-[0_10px_20px_rgba(0,0,0,0.5)] select-none">
           <span className="material-symbols-outlined text-[16px] text-emerald-400">save</span>
