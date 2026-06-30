@@ -4,6 +4,17 @@ import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import {
+  LiveKitRoom,
+  useRemoteParticipants,
+  useLocalParticipant,
+  VideoTrack,
+  AudioTrack,
+  useDisconnectButton,
+  useTracks
+} from '@livekit/components-react';
+import { Track } from 'livekit-client';
+import '@livekit/components-styles';
 
 type CallInterfaceProps = {
   currentUserId: string;
@@ -48,139 +59,68 @@ export default function CallInterface({
   const [isMicOn, setIsMicOn] = useState(true);
   const [isVideoOn, setIsVideoOn] = useState(initialCallType === 'video');
   const [callType] = useState<'audio' | 'video'>(initialCallType);
+  const [token, setToken] = useState<string>('');
   
-  const localVideoRef = useRef<HTMLVideoElement>(null);
-  const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
-  const pcRef = useRef<RTCPeerConnection | null>(null);
   const channelRef = useRef<any>(null);
-  const localStreamRef = useRef<MediaStream | null>(null);
 
   const getInitials = (name: string) => name ? name.trim().charAt(0).toUpperCase() : 'U';
 
-  // --- WEBRTC SIGNALING LOGIC ---
-  const channelName = `call_signal_${[currentUserId, partnerId].sort().join('_')}`;
+  const roomName = `call_room_${[currentUserId, partnerId].sort().join('_')}`;
+  const signalingChannelName = `call_signal_${[currentUserId, partnerId].sort().join('_')}`;
 
+  // --- SUPABASE SIGNALING FOR RINGING ---
   useEffect(() => {
     let isMounted = true;
-    let stream: MediaStream | null = null;
 
-    const setupMedia = async () => {
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ 
-          video: initialCallType === 'video', 
-          audio: true 
-        });
-        localStreamRef.current = stream;
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = stream;
-        }
-      } catch (err) {
-        console.error("Camera/Mic access denied", err);
-      }
-    };
-
-    const initCall = async () => {
-      await setupMedia();
-      
-      const pc = new RTCPeerConnection({
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-      });
-      pcRef.current = pc;
-
-      if (stream) {
-        stream.getTracks().forEach(track => pc.addTrack(track, stream!));
-      }
-
-      pc.ontrack = (event) => {
-        if (remoteVideoRef.current && event.streams[0]) {
-          remoteVideoRef.current.srcObject = event.streams[0];
-        }
-      };
-
-      const channel = supabase.channel(channelName);
+    const initSignaling = async () => {
+      const channel = supabase.channel(signalingChannelName);
       channelRef.current = channel;
 
-      pc.onicecandidate = (event) => {
-        if (event.candidate) {
-          channel.send({
-            type: 'broadcast',
-            event: 'signal',
-            payload: { type: 'ice', candidate: event.candidate, senderId: currentUserId }
-          });
-        }
-      };
-
       channel.on('broadcast', { event: 'signal' }, async ({ payload }: { payload: any }) => {
-        if (payload.senderId === currentUserId) return; // Ignore own signals
+        if (payload.senderId === currentUserId) return;
 
         if (payload.type === 'call-accepted') {
-          // Callee accepted. Caller creates offer.
           if (initialOutgoing) {
             setCallStatus('connected');
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            channel.send({
-              type: 'broadcast',
-              event: 'signal',
-              payload: { type: 'offer', sdp: offer, senderId: currentUserId }
-            });
           }
         } 
         else if (payload.type === 'call-declined') {
-          // Partner declined/ended call
           endCall();
-        }
-        else if (payload.type === 'offer') {
-          await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-          channel.send({
-            type: 'broadcast',
-            event: 'signal',
-            payload: { type: 'answer', sdp: answer, senderId: currentUserId }
-          });
-        } 
-        else if (payload.type === 'answer') {
-          await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
-        } 
-        else if (payload.type === 'ice') {
-          try {
-            await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
-          } catch (e) {
-            console.error('Error adding received ice candidate', e);
-          }
         }
       });
 
       channel.subscribe(async (status: string) => {
-        if (status === 'SUBSCRIBED') {
-          if (initialOutgoing) {
-            // Send wake-up DB trigger
-            await supabase.from('messages').insert({
-              sender_id: currentUserId,
-              receiver_id: partnerId,
-              content: initialCallType === 'video' ? '__CALL_INITIATED_VIDEO__' : '__CALL_INITIATED_AUDIO__'
-            });
-          }
+        if (status === 'SUBSCRIBED' && initialOutgoing) {
+          await supabase.from('messages').insert({
+            sender_id: currentUserId,
+            receiver_id: partnerId,
+            content: initialCallType === 'video' ? '__CALL_INITIATED_VIDEO__' : '__CALL_INITIATED_AUDIO__'
+          });
         }
       });
     };
 
     if (initialIncoming || initialOutgoing) {
-      initCall();
+      initSignaling();
     }
 
     return () => {
       isMounted = false;
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-      if (pcRef.current) pcRef.current.close();
       if (channelRef.current) supabase.removeChannel(channelRef.current);
     };
   }, [initialIncoming, initialOutgoing, currentUserId, partnerId]);
+
+  useEffect(() => {
+    if (callStatus === 'connected') {
+      fetch(`/api/livekit/token?room=${roomName}&username=${encodeURIComponent(currentUserName)}`)
+        .then(res => res.json())
+        .then(data => {
+           if (data.token) setToken(data.token);
+        })
+        .catch(console.error);
+    }
+  }, [callStatus, roomName, currentUserName]);
 
   const acceptCall = () => {
     setCallStatus('connected');
@@ -201,7 +141,7 @@ export default function CallInterface({
   };
 
   const endCall = () => {
-    declineCall(); // Broadcast end signal and redirect
+    declineCall();
   };
 
   // --- CHAT LOGIC ---
@@ -257,24 +197,6 @@ export default function CallInterface({
     setInput('');
     setMessages(prev => [...prev, { ...newMsg, id: Date.now().toString(), created_at: new Date().toISOString() }]);
     await supabase.from('messages').insert([newMsg]);
-  };
-
-  const toggleVideo = () => {
-    if (localStreamRef.current) {
-      localStreamRef.current.getVideoTracks().forEach(track => {
-        track.enabled = !track.enabled;
-      });
-      setIsVideoOn(!isVideoOn);
-    }
-  };
-
-  const toggleMic = () => {
-    if (localStreamRef.current) {
-      localStreamRef.current.getAudioTracks().forEach(track => {
-        track.enabled = !track.enabled;
-      });
-      setIsMicOn(!isMicOn);
-    }
   };
 
   // --- UI RENDERERS ---
@@ -340,31 +262,117 @@ export default function CallInterface({
     );
   }
 
-  // --- CONNECTED UI (Original HTML Style) ---
+  if (callStatus === 'connected' && !token) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-black text-white">
+        <div className="w-10 h-10 border-4 border-[#f23c57] border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  return (
+    <LiveKitRoom
+      video={isVideoOn}
+      audio={isMicOn}
+      token={token}
+      serverUrl={process.env.NEXT_PUBLIC_LIVEKIT_URL}
+      onDisconnected={endCall}
+      className="w-full h-full"
+    >
+      <ConnectedCallUI 
+        callType={callType}
+        partnerAvatarUrl={partnerAvatarUrl}
+        partnerName={partnerName}
+        currentUserAvatarUrl={currentUserAvatarUrl}
+        currentUserName={currentUserName}
+        getInitials={getInitials}
+        messages={messages}
+        input={input}
+        setInput={setInput}
+        sendMessage={sendMessage}
+        messagesEndRef={messagesEndRef}
+        isMicOn={isMicOn}
+        setIsMicOn={setIsMicOn}
+        isVideoOn={isVideoOn}
+        setIsVideoOn={setIsVideoOn}
+        endCall={endCall}
+      />
+    </LiveKitRoom>
+  );
+}
+
+function ConnectedCallUI({
+  callType,
+  partnerAvatarUrl,
+  partnerName,
+  currentUserAvatarUrl,
+  currentUserName,
+  getInitials,
+  messages,
+  input,
+  setInput,
+  sendMessage,
+  messagesEndRef,
+  isMicOn,
+  setIsMicOn,
+  isVideoOn,
+  setIsVideoOn,
+  endCall
+}: any) {
+  const { localParticipant } = useLocalParticipant();
+  const remoteParticipants = useRemoteParticipants();
+  const partner = remoteParticipants[0];
+
+  const toggleMic = () => {
+    localParticipant.setMicrophoneEnabled(!isMicOn);
+    setIsMicOn(!isMicOn);
+  };
+
+  const toggleVideo = () => {
+    localParticipant.setCameraEnabled(!isVideoOn);
+    setIsVideoOn(!isVideoOn);
+  };
+
   return (
     <div className="relative w-full h-full bg-[#131313] text-[#e5e2e1] font-sans">
       {/* Remote Video Feed (Full Screen) */}
       <div className="absolute inset-0 z-0 bg-black">
-        <video 
-          ref={remoteVideoRef} 
-          autoPlay 
-          playsInline 
-          className={`w-full h-full object-cover ${callType === 'video' ? 'block' : 'hidden'}`} 
-        />
-        {callType === 'audio' && (
-          <div className="w-full h-full flex flex-col items-center justify-center opacity-50">
-            <div className="w-48 h-48 rounded-full bg-[#222] flex items-center justify-center mb-6 overflow-hidden border-2 border-white/10">
-              {partnerAvatarUrl ? (
-                <img src={partnerAvatarUrl} alt="partner" className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-6xl font-bold">{getInitials(partnerName)}</span>
-              )}
-            </div>
-            <div className="text-white/50 text-xl flex items-center gap-2">
-              <span className="material-symbols-outlined animate-pulse text-[#f23c57]">graphic_eq</span>
-              Appel Vocal Actif
-            </div>
-          </div>
+        {partner && (
+          <>
+            {partner.getTrackPublication(Track.Source.Camera)?.videoTrack ? (
+              <VideoTrack 
+                trackRef={{
+                  participant: partner,
+                  source: Track.Source.Camera,
+                  publication: partner.getTrackPublication(Track.Source.Camera)!
+                }}
+                className="w-full h-full object-cover" 
+              />
+            ) : callType === 'audio' ? (
+              <div className="w-full h-full flex flex-col items-center justify-center opacity-50">
+                <div className="w-48 h-48 rounded-full bg-[#222] flex items-center justify-center mb-6 overflow-hidden border-2 border-white/10">
+                  {partnerAvatarUrl ? (
+                    <img src={partnerAvatarUrl} alt="partner" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-6xl font-bold">{getInitials(partnerName)}</span>
+                  )}
+                </div>
+                <div className="text-white/50 text-xl flex items-center gap-2">
+                  <span className="material-symbols-outlined animate-pulse text-[#f23c57]">graphic_eq</span>
+                  Appel Vocal Actif
+                </div>
+              </div>
+            ) : null}
+            {partner.getTrackPublication(Track.Source.Microphone)?.audioTrack && (
+              <AudioTrack 
+                trackRef={{
+                  participant: partner,
+                  source: Track.Source.Microphone,
+                  publication: partner.getTrackPublication(Track.Source.Microphone)!
+                }}
+              />
+            )}
+          </>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40"></div>
       </div>
@@ -402,13 +410,20 @@ export default function CallInterface({
           {/* Self View Floating Window */}
           {callType === 'video' && (
             <div className="absolute top-4 right-4 w-32 h-44 md:w-48 md:h-64 rounded-xl overflow-hidden shadow-2xl z-20 bg-black border border-white/20">
-              <video 
-                ref={localVideoRef} 
-                autoPlay 
-                playsInline 
-                muted 
-                className="w-full h-full object-cover transform scale-x-[-1]"
-              />
+              {localParticipant.getTrackPublication(Track.Source.Camera)?.videoTrack ? (
+                <VideoTrack 
+                  trackRef={{
+                    participant: localParticipant,
+                    source: Track.Source.Camera,
+                    publication: localParticipant.getTrackPublication(Track.Source.Camera)!
+                  }}
+                  className="w-full h-full object-cover transform scale-x-[-1]" 
+                />
+              ) : (
+                <div className="w-full h-full bg-[#222] flex items-center justify-center">
+                  <span className="material-symbols-outlined text-white/30 text-[40px]">videocam_off</span>
+                </div>
+              )}
               <div className="absolute bottom-2 left-2 bg-black/60 px-2 py-1 rounded backdrop-blur-sm">
                 <span className="text-[12px] font-bold text-white">Vous</span>
               </div>
@@ -418,7 +433,6 @@ export default function CallInterface({
 
         {/* SideNavBar (Chat) */}
         <aside className="fixed right-0 top-1/2 -translate-y-1/2 z-40 hidden lg:flex flex-col h-[calc(100vh-120px)] w-[350px] rounded-2xl m-5 bg-white/5 backdrop-blur-2xl border border-white/20 shadow-2xl transition-all duration-300">
-          {/* Header */}
           <div className="p-5 border-b border-white/10 flex items-center gap-3">
              <div className="w-10 h-10 rounded-full bg-[#222] shrink-0 overflow-hidden flex items-center justify-center">
                {partnerAvatarUrl ? (
@@ -429,14 +443,13 @@ export default function CallInterface({
              </div>
              <div>
                 <h2 className="text-[18px] font-bold text-white mb-0.5">{partnerName}</h2>
-                <p className="text-[13px] text-[#8c909f]">Appel Sécurisé</p>
+                <p className="text-[13px] text-[#8c909f]">Appel Sécurisé (LiveKit)</p>
              </div>
           </div>
           
-          {/* Messages Area */}
           <div className="flex-grow overflow-y-auto p-4 space-y-4 scrollbar-none">
-            {messages.map((msg, idx) => {
-              const isMe = msg.sender_id === currentUserId;
+            {messages.map((msg: any, idx: number) => {
+              const isMe = msg.sender_id === localParticipant.identity;
               return (
                 <div key={idx} className={`flex gap-3 ${isMe ? 'flex-row-reverse' : ''}`}>
                   {!isMe && (
@@ -457,7 +470,6 @@ export default function CallInterface({
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Chat Input */}
           <div className="p-3 border-t border-white/10 bg-black/20 rounded-b-2xl">
             <form onSubmit={sendMessage} className="flex gap-2">
               <input 
@@ -477,7 +489,6 @@ export default function CallInterface({
 
       {/* BottomNavBar */}
       <div className="fixed bottom-0 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 md:gap-4 px-4 md:px-6 py-2 mb-6 md:mb-10 bg-white/10 backdrop-blur-xl rounded-full max-w-fit mx-auto border border-white/20 shadow-2xl">
-        
         <button onClick={toggleMic} className={`flex flex-col items-center justify-center w-12 h-12 md:w-14 md:h-14 rounded-full hover:bg-white/20 transition-all active:scale-90 cursor-pointer ${!isMicOn ? 'bg-white/20 text-white' : 'text-[#e5e2e1]'}`}>
           <span className="material-symbols-outlined text-[20px] md:text-[24px]">{isMicOn ? 'mic' : 'mic_off'}</span>
         </button>

@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import CustomVideoPlayer from './CustomVideoPlayer';
 
 // Simulation de GIFs pour le prototype (Évite les erreurs 403 d'API)
@@ -523,10 +524,12 @@ export default function ChatWindow({
 
           <div className="relative w-10 h-10 shrink-0 ml-1">
             {partnerAvatarUrl ? (
-              <img
+              <Image
                 src={partnerAvatarUrl}
                 alt={partnerName}
-                className="w-10 h-10 rounded-full object-cover"
+                fill
+                className="rounded-full object-cover"
+                sizes="40px"
               />
             ) : (
               <div className={`w-10 h-10 rounded-full bg-gradient-to-tr ${getAvatarColor(partnerName)} flex items-center justify-center font-bold text-[14px] select-none`}>
@@ -645,8 +648,14 @@ export default function ChatWindow({
                              <CustomVideoPlayer src={msg.content.replace('[Vidéo] ', '')} className="w-full h-full rounded-xl" />
                            </div>
                         ) : msg.content.startsWith('[Image] ') ? (
-                           <div className="flex flex-col">
-                             <img src={msg.content.replace('[Image] ', '')} alt="Attachment" className="max-w-[220px] max-h-[300px] rounded-lg object-cover" />
+                           <div className="flex flex-col relative w-[220px] h-[300px]">
+                             <Image 
+                               src={msg.content.replace('[Image] ', '')} 
+                               alt="Attachment" 
+                               fill
+                               className="rounded-lg object-cover" 
+                               sizes="220px"
+                             />
                            </div>
                         ) : msg.content.startsWith('[Fichier] ') ? (
                            <div className="flex items-center gap-3">
