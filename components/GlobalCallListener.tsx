@@ -1126,14 +1126,14 @@ export default function GlobalCallListener() {
                 className={`absolute inset-0 w-full h-full object-cover ${callType === 'video' ? 'block' : 'hidden'}`} 
               />
 
-              {/* Snapchat-style PiP window */}
+              {/* hover:scale-[1.03] active:scale-95 */}
               {callType === 'video' && (
                 <div 
                   onClick={cyclePipCorner}
-                  className={`absolute w-32 h-44 rounded-3xl overflow-hidden border-2 border-white/20 shadow-2xl z-20 bg-black transition-all duration-500 ease-in-out cursor-pointer hover:scale-[1.03] active:scale-95 ${
-                    pipCorner === 'top-right' ? 'top-4 right-4' :
-                    pipCorner === 'bottom-right' ? 'bottom-28 right-4' :
-                    pipCorner === 'bottom-left' ? 'bottom-28 left-4' : 'top-4 left-4'
+                  className={`absolute w-28 h-40 md:w-32 md:h-44 rounded-2xl md:rounded-3xl overflow-hidden border-2 border-white/20 shadow-2xl z-20 bg-black transition-all duration-500 ease-in-out cursor-pointer hover:scale-[1.03] active:scale-95 ${
+                    pipCorner === 'top-right' ? 'top-4 right-4 md:top-6 md:right-6' :
+                    pipCorner === 'bottom-right' ? 'bottom-24 right-4 md:bottom-28 md:right-6' :
+                    pipCorner === 'bottom-left' ? 'bottom-24 left-4 md:bottom-28 md:left-6' : 'top-4 left-4 md:top-6 md:left-6'
                   }`}
                   title="Cliquez pour déplacer la caméra"
                 >
@@ -1165,7 +1165,7 @@ export default function GlobalCallListener() {
               )}
 
               {/* Call Details Overlay */}
-              <div className="absolute top-4 left-4 flex items-center gap-3 bg-black/50 backdrop-blur-lg px-4 py-2.5 rounded-2xl border border-white/10 z-20 shadow-lg select-none">
+              <div className="absolute top-4 left-4 md:top-6 md:left-6 flex items-center gap-3 bg-black/50 backdrop-blur-lg px-4 py-2.5 rounded-2xl border border-white/10 z-20 shadow-lg select-none">
                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></div>
                 <div>
                   <h4 className="text-[13px] font-bold text-white/95 leading-none mb-1">{callPartner.displayName}</h4>
@@ -1182,18 +1182,18 @@ export default function GlobalCallListener() {
             
             {/* Snapchat lens filters */}
             {callStatus === 'connected' && callType === 'video' && (
-              <div className="w-full px-8">
-                <div className="flex items-center justify-center gap-4 overflow-x-auto pb-1 scrollbar-none max-w-sm mx-auto">
+              <div className="w-full px-4 md:px-8">
+                <div className="flex items-center justify-center gap-3 md:gap-4 overflow-x-auto pb-1 scrollbar-none max-w-sm mx-auto">
                   <button 
                     onClick={() => { setActiveFilter('none'); playBeep(520, 'sine', 0.05); }}
                     className={`flex flex-col items-center shrink-0 gap-1.5 transition-all cursor-pointer ${
                       activeFilter === 'none' ? 'scale-105 opacity-100' : 'scale-90 opacity-60 hover:opacity-85'
                     }`}
                   >
-                    <div className={`w-11 h-11 rounded-full flex items-center justify-center border-2 shadow-md ${
+                    <div className={`w-10 h-10 md:w-11 md:h-11 rounded-full flex items-center justify-center border-2 shadow-md ${
                       activeFilter === 'none' ? 'bg-white/20 border-white shadow-[0_0_12px_rgba(255,255,255,0.2)]' : 'bg-white/5 border-white/10'
                     }`}>
-                      <span className="material-symbols-outlined text-[18px]">face</span>
+                      <span className="material-symbols-outlined text-[16px] md:text-[18px]">face</span>
                     </div>
                     <span className="text-[9px] font-bold tracking-wide">Normal</span>
                   </button>
@@ -1204,10 +1204,10 @@ export default function GlobalCallListener() {
                       activeFilter === 'neon' ? 'scale-105 opacity-100' : 'scale-90 opacity-60 hover:opacity-85'
                     }`}
                   >
-                    <div className={`w-11 h-11 rounded-full flex items-center justify-center border-2 shadow-md ${
+                    <div className={`w-10 h-10 md:w-11 md:h-11 rounded-full flex items-center justify-center border-2 shadow-md ${
                       activeFilter === 'neon' ? 'bg-cyan-500/20 border-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.3)]' : 'bg-white/5 border-white/10'
                     }`}>
-                      <span className="material-symbols-outlined text-[18px] text-cyan-400">blur_on</span>
+                      <span className="material-symbols-outlined text-[16px] md:text-[18px] text-cyan-400">blur_on</span>
                     </div>
                     <span className="text-[9px] font-bold tracking-wide">Néon</span>
                   </button>
@@ -1218,10 +1218,10 @@ export default function GlobalCallListener() {
                       activeFilter === 'cyber' ? 'scale-105 opacity-100' : 'scale-90 opacity-60 hover:opacity-85'
                     }`}
                   >
-                    <div className={`w-11 h-11 rounded-full flex items-center justify-center border-2 shadow-md ${
+                    <div className={`w-10 h-10 md:w-11 md:h-11 rounded-full flex items-center justify-center border-2 shadow-md ${
                       activeFilter === 'cyber' ? 'bg-emerald-500/20 border-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.3)]' : 'bg-white/5 border-white/10'
                     }`}>
-                      <span className="material-symbols-outlined text-[18px] text-emerald-400">grid_view</span>
+                      <span className="material-symbols-outlined text-[16px] md:text-[18px] text-emerald-400">grid_view</span>
                     </div>
                     <span className="text-[9px] font-bold tracking-wide">Matrix</span>
                   </button>
@@ -1232,10 +1232,10 @@ export default function GlobalCallListener() {
                       activeFilter === 'thermal' ? 'scale-105 opacity-100' : 'scale-90 opacity-60 hover:opacity-85'
                     }`}
                   >
-                    <div className={`w-11 h-11 rounded-full flex items-center justify-center border-2 shadow-md ${
+                    <div className={`w-10 h-10 md:w-11 md:h-11 rounded-full flex items-center justify-center border-2 shadow-md ${
                       activeFilter === 'thermal' ? 'bg-amber-500/20 border-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.3)]' : 'bg-white/5 border-white/10'
                     }`}>
-                      <span className="material-symbols-outlined text-[18px] text-amber-400">thermostat</span>
+                      <span className="material-symbols-outlined text-[16px] md:text-[18px] text-amber-400">thermostat</span>
                     </div>
                     <span className="text-[9px] font-bold tracking-wide">Thermique</span>
                   </button>
@@ -1246,10 +1246,10 @@ export default function GlobalCallListener() {
                       activeFilter === 'ghost' ? 'scale-105 opacity-100' : 'scale-90 opacity-60 hover:opacity-85'
                     }`}
                   >
-                    <div className={`w-11 h-11 rounded-full flex items-center justify-center border-2 shadow-md ${
+                    <div className={`w-10 h-10 md:w-11 md:h-11 rounded-full flex items-center justify-center border-2 shadow-md ${
                       activeFilter === 'ghost' ? 'bg-purple-500/20 border-purple-400 shadow-[0_0_12px_rgba(192,132,252,0.3)]' : 'bg-white/5 border-white/10'
                     }`}>
-                      <span className="material-symbols-outlined text-[18px] text-purple-400">psychology</span>
+                      <span className="material-symbols-outlined text-[16px] md:text-[18px] text-purple-400">psychology</span>
                     </div>
                     <span className="text-[9px] font-bold tracking-wide">Spectre</span>
                   </button>
@@ -1259,13 +1259,13 @@ export default function GlobalCallListener() {
 
             {/* Action buttons */}
             {callStatus === 'calling-incoming' ? (
-              <div className="flex items-center justify-center gap-12 w-full max-w-xs py-4">
+              <div className="flex items-center justify-center gap-8 md:gap-12 w-full max-w-xs py-4">
                 <div className="flex flex-col items-center gap-2">
                   <button 
                     onClick={declineCall}
-                    className="w-14 h-14 bg-red-600 hover:bg-red-700 hover:scale-105 active:scale-95 text-white rounded-full flex items-center justify-center transition-all cursor-pointer shadow-[0_4px_14px_rgba(239,68,68,0.4)] border border-red-500/20"
+                    className="w-12 h-12 md:w-14 md:h-14 bg-red-600 hover:bg-red-700 hover:scale-105 active:scale-95 text-white rounded-full flex items-center justify-center transition-all cursor-pointer shadow-[0_4px_14px_rgba(239,68,68,0.4)] border border-red-500/20"
                   >
-                    <span className="material-symbols-outlined text-[24px]">call_end</span>
+                    <span className="material-symbols-outlined text-[20px] md:text-[24px]">call_end</span>
                   </button>
                   <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Décliner</span>
                 </div>
@@ -1273,51 +1273,51 @@ export default function GlobalCallListener() {
                 <div className="flex flex-col items-center gap-2">
                   <button 
                     onClick={acceptCall}
-                    className="w-14 h-14 bg-emerald-500 hover:bg-emerald-600 hover:scale-105 active:scale-95 text-white rounded-full flex items-center justify-center transition-all cursor-pointer shadow-[0_4px_14px_rgba(16,185,129,0.4)] border border-emerald-400/20"
+                    className="w-12 h-12 md:w-14 md:h-14 bg-emerald-500 hover:bg-emerald-600 hover:scale-105 active:scale-95 text-white rounded-full flex items-center justify-center transition-all cursor-pointer shadow-[0_4px_14px_rgba(16,185,129,0.4)] border border-emerald-400/20"
                   >
-                    <span className="material-symbols-outlined text-[24px]">call</span>
+                    <span className="material-symbols-outlined text-[20px] md:text-[24px]">call</span>
                   </button>
                   <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">Accepter</span>
                 </div>
               </div>
             ) : (
-              <div className="flex items-center justify-center gap-4 w-full max-w-sm">
+              <div className="flex items-center justify-center gap-2 md:gap-4 w-full px-2 max-w-md">
                 <button 
                   onClick={toggleMute}
-                  className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all cursor-pointer active:scale-90 shadow-md ${
+                  className={`w-11 h-11 md:w-12 md:h-12 rounded-full border flex items-center justify-center transition-all cursor-pointer active:scale-90 shadow-md ${
                     isMuted 
                       ? 'bg-red-500/25 border-red-500/40 text-red-400 hover:bg-red-500/35' 
                       : 'bg-white/10 border-white/15 text-white hover:bg-white/15'
                   }`}
                   title="Couper le micro"
                 >
-                  <span className="material-symbols-outlined text-[20px]">{isMuted ? 'mic_off' : 'mic'}</span>
+                  <span className="material-symbols-outlined text-[18px] md:text-[20px]">{isMuted ? 'mic_off' : 'mic'}</span>
                 </button>
 
-                <div className="flex gap-2 mx-2">
+                <div className="flex gap-2 mx-1 md:mx-2">
                   <button 
                     onClick={toggleCam}
-                    className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all cursor-pointer active:scale-90 shadow-md ${
+                    className={`w-11 h-11 md:w-12 md:h-12 rounded-full border flex items-center justify-center transition-all cursor-pointer active:scale-90 shadow-md ${
                       isCamOff 
                         ? 'bg-red-500/25 border-red-500/40 text-red-400 hover:bg-red-500/35' 
                         : 'bg-white/10 border-white/15 text-white hover:bg-white/15'
                     }`}
                     title="Activer/Désactiver la caméra"
                   >
-                    <span className="material-symbols-outlined text-[20px]">{isCamOff ? 'videocam_off' : 'videocam'}</span>
+                    <span className="material-symbols-outlined text-[18px] md:text-[20px]">{isCamOff ? 'videocam_off' : 'videocam'}</span>
                   </button>
 
                   {callStatus === 'connected' && (
                     <button 
                       onClick={toggleScreenShare}
-                      className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all cursor-pointer active:scale-90 shadow-md ${
+                      className={`w-11 h-11 md:w-12 md:h-12 rounded-full border flex items-center justify-center transition-all cursor-pointer active:scale-90 shadow-md ${
                         isScreenSharing 
                           ? 'bg-blue-500/25 border-blue-500/40 text-blue-400 hover:bg-blue-500/35' 
                           : 'bg-white/10 border-white/15 text-white hover:bg-white/15'
                       }`}
                       title="Partager l'écran"
                     >
-                      <span className="material-symbols-outlined text-[20px]">
+                      <span className="material-symbols-outlined text-[18px] md:text-[20px]">
                         {isScreenSharing ? 'stop_screen_share' : 'present_to_all'}
                       </span>
                     </button>
@@ -1326,20 +1326,20 @@ export default function GlobalCallListener() {
                   {callStatus === 'connected' && callType === 'video' && !isCamOff && !isScreenSharing && (
                     <button 
                       onClick={flipCamera}
-                      className="w-12 h-12 rounded-full border bg-white/10 border-white/15 text-white hover:bg-white/15 flex items-center justify-center transition-all cursor-pointer active:scale-90 shadow-md"
+                      className="w-11 h-11 md:w-12 md:h-12 rounded-full border bg-white/10 border-white/15 text-white hover:bg-white/15 flex items-center justify-center transition-all cursor-pointer active:scale-90 shadow-md"
                       title="Retourner la caméra"
                     >
-                      <span className="material-symbols-outlined text-[20px]">flip_camera_ios</span>
+                      <span className="material-symbols-outlined text-[18px] md:text-[20px]">flip_camera_ios</span>
                     </button>
                   )}
                 </div>
 
                 <button 
                   onClick={endCall}
-                  className="w-16 h-16 bg-red-600 hover:bg-red-700 hover:scale-105 active:scale-95 text-white rounded-full flex items-center justify-center transition-all cursor-pointer shadow-[0_0_25px_rgba(239,68,68,0.55)] border border-red-500/30 shrink-0"
+                  className="w-14 h-14 md:w-16 md:h-16 bg-red-600 hover:bg-red-700 hover:scale-105 active:scale-95 text-white rounded-full flex items-center justify-center transition-all cursor-pointer shadow-[0_0_25px_rgba(239,68,68,0.55)] border border-red-500/30 shrink-0"
                   title="Raccrocher"
                 >
-                  <span className="material-symbols-outlined text-[28px] font-bold">call_end</span>
+                  <span className="material-symbols-outlined text-[24px] md:text-[28px] font-bold">call_end</span>
                 </button>
               </div>
             )}
@@ -1349,7 +1349,7 @@ export default function GlobalCallListener() {
 
       {/* 2. Global Glassmorphic Incoming Call Toast Notification */}
       {showIncomingCallPopup && (
-        <div className="fixed top-6 right-6 z-[10000] w-80 bg-slate-950/85 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-2xl text-white flex flex-col gap-3 animate-slide-in select-none font-sans">
+        <div className="fixed top-4 left-4 right-4 md:top-6 md:left-auto md:right-6 z-[10000] md:w-80 bg-slate-950/85 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-2xl text-white flex flex-col gap-3 animate-slide-in select-none font-sans">
           
           <div className="flex items-center gap-3">
             <div className="relative w-12 h-12 shrink-0 flex items-center justify-center">

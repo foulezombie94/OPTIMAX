@@ -553,12 +553,14 @@ export default function ChatWindow({
           <Link 
             href={`/call/${partnerId}`}
             className="text-white flex items-center justify-center cursor-pointer hover:text-[#f23c57] transition-colors"
+            onClick={() => startCall('audio')}
           >
             <span className="material-symbols-outlined text-[28px]" style={{fontVariationSettings: "'FILL' 1"}}>call</span>
           </Link>
           <Link 
             href={`/call/${partnerId}`}
             className="text-white flex items-center justify-center cursor-pointer hover:text-[#f23c57] transition-colors"
+            onClick={() => startCall('video')}
           >
             <span className="material-symbols-outlined text-[32px]" style={{fontVariationSettings: "'FILL' 1"}}>videocam</span>
           </Link>
