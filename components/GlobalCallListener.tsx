@@ -91,48 +91,60 @@ export default function GlobalCallListener() {
 
   // Fetch current user session details
   useEffect(() => {
-    const fetchSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        console.log("[GlobalCallListener] Active user session found:", session.user.id);
-        setCurrentUserId(session.user.id);
-        let profileData: any = null;
-        try {
-          const { data } = await supabase
-            .from('profiles')
-            .select('id, username, email, avatar_url')
-            .eq('id', session.user.id)
-            .single();
-          profileData = data;
-        } catch (e) {
-          console.warn("[GlobalCallListener] Profile query bypassed or failed, using auth fallback:", e);
-        }
+    let isMounted = true;
+    let currentIdStr = '';
 
+    const loadProfile = async (session: any) => {
+      let profileData: any = null;
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('id, username, email, avatar_url')
+          .eq('id', session.user.id)
+          .single();
+        profileData = data;
+      } catch (e) {
+        console.warn("[GlobalCallListener] Profile query bypassed or failed, using auth fallback:", e);
+      }
+      
+      if (isMounted) {
         setCurrentUserProfile({
           id: session.user.id,
           displayName: profileData?.username || session.user.email?.split('@')[0] || 'User',
           username: profileData?.username || session.user.email?.split('@')[0] || 'user',
           avatarUrl: profileData?.avatar_url || undefined
         });
-      } else {
-        console.log("[GlobalCallListener] No active user session found.");
+      }
+    };
+
+    const fetchSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user && isMounted) {
+        currentIdStr = session.user.id;
+        setCurrentUserId(session.user.id);
+        loadProfile(session);
       }
     };
     fetchSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
+      if (!isMounted) return;
       if (session?.user) {
-        console.log("[GlobalCallListener] Auth state changed (logged in):", session.user.id);
-        setCurrentUserId(session.user.id);
-        fetchSession();
+        // Prevent infinite loops by only fetching profile if user ID actually changes
+        if (session.user.id !== currentIdStr) {
+          currentIdStr = session.user.id;
+          setCurrentUserId(session.user.id);
+          loadProfile(session);
+        }
       } else {
-        console.log("[GlobalCallListener] Auth state changed (logged out)");
+        currentIdStr = '';
         setCurrentUserId(null);
         setCurrentUserProfile(null);
       }
     });
 
     return () => {
+      isMounted = false;
       subscription.unsubscribe();
     };
   }, []);
