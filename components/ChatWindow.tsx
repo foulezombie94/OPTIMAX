@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import CustomVideoPlayer from './CustomVideoPlayer';
 
 // Simulation de GIFs pour le prototype (Évite les erreurs 403 d'API)
@@ -206,6 +207,7 @@ export default function ChatWindow({
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+  const router = useRouter();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
