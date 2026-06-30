@@ -11,8 +11,10 @@ import {
   VideoTrack,
   AudioTrack,
   useDisconnectButton,
-  useTracks
+  useTracks,
+  useChat
 } from '@livekit/components-react';
+import TicTacToe from './TicTacToe';
 import { Track } from 'livekit-client';
 import '@livekit/components-styles';
 
@@ -144,61 +146,6 @@ export default function CallInterface({
     declineCall();
   };
 
-  // --- CHAT LOGIC ---
-  useEffect(() => {
-    const fetchMessages = async () => {
-      const { data } = await supabase
-        .from('messages')
-        .select('*')
-        .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${partnerId}),and(sender_id.eq.${partnerId},receiver_id.eq.${currentUserId})`)
-        .order('created_at', { ascending: true })
-        .limit(50);
-        
-      if (data) {
-        setMessages(data.filter((m: any) => !m.content.startsWith('__CALL_INITIATED_')));
-      }
-    };
-
-    fetchMessages();
-
-    const channel = supabase.channel(`call_chat_${partnerId}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages',
-        filter: `sender_id=eq.${partnerId}`,
-      }, (payload: any) => {
-        const newMessage = payload.new as Message;
-        if (newMessage.receiver_id === currentUserId && !newMessage.content.startsWith('__CALL_INITIATED_')) {
-          setMessages(prev => [...prev, newMessage]);
-        }
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [currentUserId, partnerId, supabase]);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  const sendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim()) return;
-
-    const newMsg = {
-      sender_id: currentUserId,
-      receiver_id: partnerId,
-      content: input,
-    };
-
-    setInput('');
-    setMessages(prev => [...prev, { ...newMsg, id: Date.now().toString(), created_at: new Date().toISOString() }]);
-    await supabase.from('messages').insert([newMsg]);
-  };
-
   // --- UI RENDERERS ---
 
   if (callStatus === 'ringing-incoming') {
@@ -286,11 +233,6 @@ export default function CallInterface({
         currentUserAvatarUrl={currentUserAvatarUrl}
         currentUserName={currentUserName}
         getInitials={getInitials}
-        messages={messages}
-        input={input}
-        setInput={setInput}
-        sendMessage={sendMessage}
-        messagesEndRef={messagesEndRef}
         isMicOn={isMicOn}
         setIsMicOn={setIsMicOn}
         isVideoOn={isVideoOn}
@@ -301,6 +243,7 @@ export default function CallInterface({
   );
 }
 
+
 function ConnectedCallUI({
   callType,
   partnerAvatarUrl,
@@ -308,11 +251,6 @@ function ConnectedCallUI({
   currentUserAvatarUrl,
   currentUserName,
   getInitials,
-  messages,
-  input,
-  setInput,
-  sendMessage,
-  messagesEndRef,
   isMicOn,
   setIsMicOn,
   isVideoOn,
@@ -322,6 +260,21 @@ function ConnectedCallUI({
   const { localParticipant } = useLocalParticipant();
   const remoteParticipants = useRemoteParticipants();
   const partner = remoteParticipants[0];
+
+  const { send, chatMessages } = useChat();
+  const [input, setInput] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
+
+  const handleSendMessage = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim()) return;
+    send(input);
+    setInput('');
+  };
 
   const toggleMic = () => {
     localParticipant.setMicrophoneEnabled(!isMicOn);
@@ -348,21 +301,15 @@ function ConnectedCallUI({
                 }}
                 className="w-full h-full object-cover" 
               />
-            ) : callType === 'audio' ? (
-              <div className="w-full h-full flex flex-col items-center justify-center opacity-50">
-                <div className="w-48 h-48 rounded-full bg-[#222] flex items-center justify-center mb-6 overflow-hidden border-2 border-white/10">
-                  {partnerAvatarUrl ? (
-                    <img src={partnerAvatarUrl} alt="partner" className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-6xl font-bold">{getInitials(partnerName)}</span>
-                  )}
-                </div>
-                <div className="text-white/50 text-xl flex items-center gap-2">
-                  <span className="material-symbols-outlined animate-pulse text-[#f23c57]">graphic_eq</span>
-                  Appel Vocal Actif
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center relative">
+                {/* Background Pattern */}
+                <div className="absolute inset-0 bg-[#0a0a0a] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#1a0508] via-[#0a0a0a] to-[#050505] opacity-80 z-0"></div>
+                <div className="relative z-10 w-full h-full">
+                  <TicTacToe partnerName={partnerName} />
                 </div>
               </div>
-            ) : null}
+            )}
             {partner.getTrackPublication(Track.Source.Microphone)?.audioTrack && (
               <AudioTrack 
                 trackRef={{
@@ -448,8 +395,8 @@ function ConnectedCallUI({
           </div>
           
           <div className="flex-grow overflow-y-auto p-4 space-y-4 scrollbar-none">
-            {messages.map((msg: any, idx: number) => {
-              const isMe = msg.sender_id === localParticipant.identity;
+            {chatMessages.map((msg: any, idx: number) => {
+              const isMe = msg.from?.identity === localParticipant.identity;
               return (
                 <div key={idx} className={`flex gap-3 ${isMe ? 'flex-row-reverse' : ''}`}>
                   {!isMe && (
@@ -462,7 +409,7 @@ function ConnectedCallUI({
                     </div>
                   )}
                   <div className={`max-w-[75%] p-3 text-[14px] leading-relaxed break-words shadow-sm backdrop-blur-md ${isMe ? 'bg-[#f23c57]/80 text-white rounded-2xl rounded-tr-none border border-[#f23c57]' : 'bg-white/10 text-white rounded-2xl rounded-tl-none border border-white/10'}`}>
-                    {msg.content}
+                    {msg.message}
                   </div>
                 </div>
               );
@@ -471,7 +418,7 @@ function ConnectedCallUI({
           </div>
 
           <div className="p-3 border-t border-white/10 bg-black/20 rounded-b-2xl">
-            <form onSubmit={sendMessage} className="flex gap-2">
+            <form onSubmit={handleSendMessage} className="flex gap-2">
               <input 
                 type="text" 
                 value={input}
