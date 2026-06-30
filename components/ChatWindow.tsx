@@ -216,6 +216,34 @@ export default function ChatWindow({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [gifSearch, setGifSearch] = useState('');
+  const [giphyResults, setGiphyResults] = useState<any[]>([]);
+  const [isSearchingGiphy, setIsSearchingGiphy] = useState(false);
+
+  useEffect(() => {
+    if (!showGifPicker) return;
+    const fetchGiphy = async () => {
+      setIsSearchingGiphy(true);
+      try {
+        const apiKey = 'O6w4ZuU9GgaeCZsibeHrGm3dazVeFkFC';
+        let url = `https://api.giphy.com/v1/gifs/trending?api_key=${apiKey}&limit=20`;
+        if (gifSearch.trim()) {
+           url = `https://api.giphy.com/v1/gifs/search?api_key=${apiKey}&q=${encodeURIComponent(gifSearch)}&limit=20`;
+        }
+        const res = await fetch(url);
+        const json = await res.json();
+        setGiphyResults(json.data || []);
+      } catch (err) {
+        console.error("Giphy fetch error", err);
+      } finally {
+        setIsSearchingGiphy(false);
+      }
+    };
+    
+    const timeoutId = setTimeout(() => {
+       fetchGiphy();
+    }, 500); // Debounce search
+    return () => clearTimeout(timeoutId);
+  }, [gifSearch, showGifPicker]);
 
   // Recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -831,24 +859,33 @@ export default function ChatWindow({
                     <span className="material-symbols-outlined text-[16px]">close</span>
                   </button>
                 </div>
-                <div className="flex-grow overflow-y-auto scrollbar-thin scrollbar-thumb-[#444] scrollbar-track-transparent bg-[#111] p-2">
+                <div className="flex-grow overflow-y-auto scrollbar-thin scrollbar-thumb-[#444] scrollbar-track-transparent bg-[#111] p-2 relative">
+                  {isSearchingGiphy && (
+                     <div className="absolute inset-0 bg-[#111]/80 z-10 flex items-center justify-center">
+                       <div className="w-8 h-8 border-2 border-[#f23c57] border-t-transparent rounded-full animate-spin"></div>
+                     </div>
+                  )}
                   <div className="grid grid-cols-2 gap-2">
-                    {MOCK_GIFS.map((url, i) => (
-                      <div 
-                        key={i}
-                        onClick={() => {
-                          setShowGifPicker(false);
-                          setInput(`[Image] ${url}`);
-                          setTimeout(() => {
-                             const form = document.getElementById('chat-form') as HTMLFormElement;
-                             if (form) form.requestSubmit();
-                          }, 50);
-                        }}
-                        className="cursor-pointer overflow-hidden rounded-lg border border-transparent hover:border-[#f23c57] transition-colors"
-                      >
-                        <img src={url} alt="GIF" className="w-full h-24 object-cover" />
-                      </div>
-                    ))}
+                    {giphyResults.map((gif, i) => {
+                      const url = gif.images?.fixed_height?.url;
+                      if (!url) return null;
+                      return (
+                        <div 
+                          key={gif.id || i}
+                          onClick={() => {
+                            setShowGifPicker(false);
+                            setInput(`[Image] ${url}`);
+                            setTimeout(() => {
+                               const form = document.getElementById('chat-form') as HTMLFormElement;
+                               if (form) form.requestSubmit();
+                            }, 50);
+                          }}
+                          className="cursor-pointer overflow-hidden rounded-lg border border-transparent hover:border-[#f23c57] transition-colors"
+                        >
+                          <img src={url} alt="GIF" className="w-full h-24 object-cover" />
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               </div>
