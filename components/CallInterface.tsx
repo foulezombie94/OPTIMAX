@@ -112,7 +112,7 @@ export default function CallInterface({
         }
       };
 
-      channel.on('broadcast', { event: 'signal' }, async ({ payload }) => {
+      channel.on('broadcast', { event: 'signal' }, async ({ payload }: { payload: any }) => {
         if (payload.senderId === currentUserId) return; // Ignore own signals
 
         if (payload.type === 'call-accepted') {
@@ -154,7 +154,7 @@ export default function CallInterface({
         }
       });
 
-      channel.subscribe(async (status) => {
+      channel.subscribe(async (status: string) => {
         if (status === 'SUBSCRIBED') {
           if (initialOutgoing) {
             // Send wake-up DB trigger
@@ -215,7 +215,7 @@ export default function CallInterface({
         .limit(50);
         
       if (data) {
-        setMessages(data.filter(m => !m.content.startsWith('__CALL_INITIATED_')));
+        setMessages(data.filter((m: any) => !m.content.startsWith('__CALL_INITIATED_')));
       }
     };
 
