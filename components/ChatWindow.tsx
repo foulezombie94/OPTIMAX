@@ -344,7 +344,6 @@ export default function ChatWindow({
       // Reverse so oldest is first in the chat UI
       const reversedData = [...data].reverse();
       const formatted = reversedData
-        .filter((msg: any) => !msg.content.startsWith('__CALL_INITIATED_'))
         .map((msg: { id: string; sender_id: string; content: string; created_at: string }) => {
         const isPdf = msg.content.toLowerCase().endsWith('.pdf');
         return {
@@ -380,7 +379,6 @@ export default function ChatWindow({
         (payload: any) => {
           const newMsg = payload.new as { id: string; sender_id: string; content: string; created_at: string };
           if (newMsg.sender_id === partnerId) {
-            if (newMsg.content.startsWith('__CALL_INITIATED_')) return;
             const isPdf = newMsg.content.toLowerCase().endsWith('.pdf');
             setMessages((prev) => [...prev, {
               id: newMsg.id,

@@ -43,53 +43,60 @@ export default function GlobalCallListener() {
     };
   }, [supabase.auth]);
 
-  // Hook to listen to call initiation trigger messages in DB
+  // Hook to listen to call initiation via Broadcast
   useEffect(() => {
     if (!currentUserId) return;
     
-    // Check if we are already in a call to avoid redirect loops
+    // Check if we are already in a call page to avoid redirect loops
+    // and to know if we should reply with 'busy'
     const isInCallPage = window.location.pathname.startsWith('/call/');
-    if (isInCallPage) return;
 
-    console.log("[GlobalCallListener] Subscribing to DB for incoming calls...");
+    console.log("[GlobalCallListener] Subscribing to Broadcast for incoming calls...");
 
-    const dbCallChannel = supabase
-      .channel('global_incoming_calls_db')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `receiver_id=eq.${currentUserId}`
-        },
-        async (payload: any) => {
-          const newMsg = payload.new as { id: string; sender_id: string; content: string; created_at: string };
-          
-          if (
-            newMsg.content === '__CALL_INITIATED_AUDIO__' ||
-            newMsg.content === '__CALL_INITIATED_VIDEO__'
-          ) {
-            console.log("[GlobalCallListener] Detected call trigger message in DB! Redirecting...");
-            
-            const callType = newMsg.content === '__CALL_INITIATED_VIDEO__' ? 'video' : 'audio';
-            const partnerId = newMsg.sender_id;
+    const channelName = `user_signal_${currentUserId}`;
+    const signalChannel = supabase.channel(channelName);
 
-            // Mark message as read since it's just a system trigger
-            await supabase.from('messages').update({ is_read: true }).eq('id', newMsg.id);
+    signalChannel.on('broadcast', { event: 'signal' }, async ({ payload }: { payload: any }) => {
+      if (payload.type === 'invite') {
+        const callerId = payload.callerId;
+        const callType = payload.callType || 'video';
 
-            // Redirect immediately to the dedicated incoming call page
-            router.push(`/call/${partnerId}?type=${callType}&incoming=true`);
+        if (isInCallPage) {
+          // If we are already handling a call from this exact user, ignore the duplicate invite.
+          if (window.location.pathname.includes(`/call/${callerId}`)) {
+             return;
           }
+
+          // I am already in a call with someone else, reply with busy
+          console.log("[GlobalCallListener] Received invite but I am busy, sending busy signal.");
+          const callerChannel = supabase.channel(`user_signal_${callerId}`);
+          callerChannel.subscribe((status: string) => {
+             if (status === 'SUBSCRIBED') {
+                setTimeout(() => {
+                  callerChannel.send({
+                    type: 'broadcast',
+                    event: 'signal',
+                    payload: { type: 'busy', responderId: currentUserId }
+                  });
+                  setTimeout(() => supabase.removeChannel(callerChannel), 500);
+                }, 50);
+             }
+          });
+          return;
         }
-      )
-      .subscribe((status: any) => {
-        console.log(`[GlobalCallListener] DB subscription status: ${status}`);
-      });
+
+        console.log("[GlobalCallListener] Detected call invite! Redirecting...");
+        router.push(`/call/${callerId}?type=${callType}&incoming=true`);
+      }
+    });
+
+    signalChannel.subscribe((status: any) => {
+      console.log(`[GlobalCallListener] Broadcast subscription status: ${status}`);
+    });
 
     return () => {
-      console.log("[GlobalCallListener] Cleaning up DB subscription");
-      supabase.removeChannel(dbCallChannel);
+      console.log("[GlobalCallListener] Cleaning up Broadcast subscription");
+      supabase.removeChannel(signalChannel);
     };
   }, [currentUserId, router, supabase]);
 

@@ -38,6 +38,8 @@ type Message = {
   created_at: string;
 };
 
+type CallStatus = 'idle' | 'ringing-incoming' | 'ringing-outgoing' | 'connected' | 'busy';
+
 export default function CallInterface({ 
   currentUserId, 
   currentUserName, 
@@ -52,7 +54,7 @@ export default function CallInterface({
   const router = useRouter();
   const supabase = createClient();
 
-  const [callStatus, setCallStatus] = useState<'idle' | 'ringing-incoming' | 'ringing-outgoing' | 'connected'>(
+  const [callStatus, setCallStatus] = useState<CallStatus>(
     initialIncoming ? 'ringing-incoming' : initialOutgoing ? 'ringing-outgoing' : 'idle'
   );
   
@@ -69,49 +71,89 @@ export default function CallInterface({
   const getInitials = (name: string) => name ? name.trim().charAt(0).toUpperCase() : 'U';
 
   const roomName = `call_room_${[currentUserId, partnerId].sort().join('_')}`;
-  const signalingChannelName = `call_signal_${[currentUserId, partnerId].sort().join('_')}`;
+  const mySignalChannelName = `user_signal_${currentUserId}`;
+  const partnerSignalChannelName = `user_signal_${partnerId}`;
 
-  // --- SUPABASE SIGNALING FOR RINGING ---
+  // --- SUPABASE ZERO-DB SIGNALING ---
   useEffect(() => {
     let isMounted = true;
+    let interval: NodeJS.Timeout;
+    let timeout: NodeJS.Timeout;
 
-    const initSignaling = async () => {
-      const channel = supabase.channel(signalingChannelName);
-      channelRef.current = channel;
+    const myChannel = supabase.channel(mySignalChannelName);
+    const partnerChannel = supabase.channel(partnerSignalChannelName);
 
-      channel.on('broadcast', { event: 'signal' }, async ({ payload }: { payload: any }) => {
-        if (payload.senderId === currentUserId) return;
-
-        if (payload.type === 'call-accepted') {
-          if (initialOutgoing) {
-            setCallStatus('connected');
-          }
-        } 
-        else if (payload.type === 'call-declined') {
-          endCall();
-        }
+    const sendSignal = (type: string) => {
+      partnerChannel.send({
+        type: 'broadcast',
+        event: 'signal',
+        payload: { type, callerId: currentUserId, responderId: currentUserId, callType: initialCallType }
       });
+    };
 
-      channel.subscribe(async (status: string) => {
-        if (status === 'SUBSCRIBED' && initialOutgoing) {
-          await supabase.from('messages').insert({
-            sender_id: currentUserId,
-            receiver_id: partnerId,
-            content: initialCallType === 'video' ? '__CALL_INITIATED_VIDEO__' : '__CALL_INITIATED_AUDIO__'
+    myChannel.on('broadcast', { event: 'signal' }, ({ payload }: { payload: any }) => {
+      if (!isMounted) return;
+      if (payload.callerId !== partnerId && payload.responderId !== partnerId) return;
+
+      switch (payload.type) {
+        case 'accept':
+          setCallStatus('connected');
+          break;
+        case 'decline':
+        case 'cancel':
+          router.push(`/messages/${partnerId}`);
+          break;
+        case 'busy':
+          if (callStatus === 'ringing-outgoing') setCallStatus('busy');
+          break;
+        case 'invite':
+          if (callStatus === 'ringing-outgoing' && currentUserId > partnerId) {
+             setCallStatus('ringing-incoming');
+          }
+          break;
+        case 'ringing':
+          if (callStatus === 'ringing-outgoing') {
+             clearTimeout(timeout);
+             timeout = setTimeout(() => router.push(`/messages/${partnerId}`), 30000);
+          }
+          break;
+      }
+    });
+
+    const startSignaling = async () => {
+      await myChannel.subscribe(async (status: string) => {
+        if (status === 'SUBSCRIBED') {
+          await partnerChannel.subscribe((pStatus: string) => {
+             if (pStatus === 'SUBSCRIBED') {
+                channelRef.current = { sendSignal };
+
+                if (callStatus === 'ringing-outgoing') {
+                   sendSignal('invite');
+                   interval = setInterval(() => sendSignal('invite'), 2000);
+                   timeout = setTimeout(() => router.push(`/messages/${partnerId}`), 30000);
+                } else if (callStatus === 'ringing-incoming') {
+                   sendSignal('ringing');
+                   interval = setInterval(() => sendSignal('ringing'), 2000);
+                   timeout = setTimeout(() => router.push(`/messages/${partnerId}`), 30000);
+                }
+             }
           });
         }
       });
     };
 
-    if (initialIncoming || initialOutgoing) {
-      initSignaling();
+    if (callStatus === 'ringing-incoming' || callStatus === 'ringing-outgoing') {
+      startSignaling();
     }
 
     return () => {
       isMounted = false;
-      if (channelRef.current) supabase.removeChannel(channelRef.current);
+      clearInterval(interval);
+      clearTimeout(timeout);
+      supabase.removeChannel(myChannel);
+      supabase.removeChannel(partnerChannel);
     };
-  }, [initialIncoming, initialOutgoing, currentUserId, partnerId]);
+  }, [callStatus, currentUserId, partnerId, initialCallType, router, supabase]);
 
   useEffect(() => {
     if (callStatus === 'connected') {
@@ -126,24 +168,21 @@ export default function CallInterface({
 
   const acceptCall = () => {
     setCallStatus('connected');
-    channelRef.current?.send({
-      type: 'broadcast',
-      event: 'signal',
-      payload: { type: 'call-accepted', senderId: currentUserId }
-    });
+    channelRef.current?.sendSignal('accept');
   };
 
   const declineCall = () => {
-    channelRef.current?.send({
-      type: 'broadcast',
-      event: 'signal',
-      payload: { type: 'call-declined', senderId: currentUserId }
-    });
+    channelRef.current?.sendSignal('decline');
+    router.push(`/messages/${partnerId}`);
+  };
+
+  const cancelCall = () => {
+    channelRef.current?.sendSignal('cancel');
     router.push(`/messages/${partnerId}`);
   };
 
   const endCall = () => {
-    declineCall();
+    router.push(`/messages/${partnerId}`);
   };
 
   // --- UI RENDERERS ---
@@ -217,11 +256,36 @@ export default function CallInterface({
             Sonnerie en cours...
           </p>
           
-          <div className="flex flex-col items-center gap-3 group cursor-pointer" onClick={endCall}>
+          <div className="flex flex-col items-center gap-3 group cursor-pointer" onClick={cancelCall}>
              <div className="w-16 h-16 bg-red-600/20 backdrop-blur-md hover:bg-red-600 rounded-full flex items-center justify-center transition-all group-hover:scale-110 active:scale-95 border border-red-500/30 hover:border-red-500 shadow-[0_0_30px_rgba(220,38,38,0.2)] hover:shadow-[0_0_30px_rgba(220,38,38,0.6)]">
                <span className="material-symbols-outlined text-3xl text-red-500 group-hover:text-white transition-colors">call_end</span>
              </div>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (callStatus === 'busy') {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center bg-[#050505] text-white relative overflow-hidden animate-fade-in">
+        <div className="relative z-10 flex flex-col items-center">
+          <div className="w-24 h-24 rounded-full bg-[#111] flex items-center justify-center border-2 border-white/10 overflow-hidden mb-6 opacity-50 grayscale">
+            {partnerAvatarUrl ? (
+              <img src={partnerAvatarUrl} alt={partnerName} className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-3xl font-bold text-white/50">{getInitials(partnerName)}</span>
+            )}
+          </div>
+          <h2 className="text-2xl font-bold mb-2">{partnerName}</h2>
+          <p className="text-red-400 font-medium mb-12 flex items-center gap-2">
+            <span className="material-symbols-outlined text-sm">phone_in_talk</span>
+            Est déjà en ligne avec quelqu'un d'autre
+          </p>
+          
+          <button onClick={() => router.push(`/messages/${partnerId}`)} className="px-8 py-3 bg-white/10 hover:bg-white/20 rounded-full transition-all active:scale-95 font-bold">
+            Retour aux messages
+          </button>
         </div>
       </div>
     );

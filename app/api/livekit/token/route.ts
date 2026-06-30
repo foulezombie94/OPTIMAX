@@ -6,10 +6,8 @@ export async function GET(req: NextRequest) {
   const room = req.nextUrl.searchParams.get('room');
   const username = req.nextUrl.searchParams.get('username');
   
-  if (!room) {
-    return NextResponse.json({ error: 'Missing "room" query parameter' }, { status: 400 });
-  } else if (!username) {
-    return NextResponse.json({ error: 'Missing "username" query parameter' }, { status: 400 });
+  if (!room || !username) {
+    return NextResponse.json({ error: 'Missing required query parameters' }, { status: 400 });
   }
 
   // Ensure user is authenticated
@@ -36,7 +34,7 @@ export async function GET(req: NextRequest) {
     
     at.addGrant({ roomJoin: true, room: room });
 
-    const token = await at.toJwt();
+    const token = await Promise.resolve(at.toJwt()); // using Promise.resolve to support both old and new SDK versions safely
     return NextResponse.json({ token });
   } catch (error) {
     console.error('Error generating LiveKit token:', error);

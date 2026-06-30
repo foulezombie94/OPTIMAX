@@ -38,11 +38,7 @@ export default async function MessagesLayout({
     
     let snippet = 'Cliquer pour ouvrir la discussion';
     if (latestMsg) {
-      if (latestMsg.content === '__CALL_INITIATED_AUDIO__') {
-        snippet = '📞 Appel vocal';
-      } else if (latestMsg.content === '__CALL_INITIATED_VIDEO__') {
-        snippet = '📹 Appel vidéo';
-      } else if (latestMsg.content && latestMsg.content.toLowerCase().endsWith('.pdf')) {
+      if (latestMsg.content && latestMsg.content.toLowerCase().endsWith('.pdf')) {
         snippet = '📄 Fichier PDF';
       } else if (latestMsg.content && latestMsg.content.startsWith('[Vidéo] ')) {
         snippet = '🎥 Vidéo';
