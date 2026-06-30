@@ -550,20 +550,18 @@ export default function ChatWindow({
 
         <div className="flex items-center gap-5 pr-2">
           {/* Call Actions */}
-          <Link 
-            href={`/call/${partnerId}`}
-            className="text-white flex items-center justify-center cursor-pointer hover:text-[#f23c57] transition-colors"
+          <button 
             onClick={() => startCall('audio')}
+            className="text-white flex items-center justify-center cursor-pointer hover:text-[#f23c57] transition-colors bg-transparent border-none"
           >
             <span className="material-symbols-outlined text-[28px]" style={{fontVariationSettings: "'FILL' 1"}}>call</span>
-          </Link>
-          <Link 
-            href={`/call/${partnerId}`}
-            className="text-white flex items-center justify-center cursor-pointer hover:text-[#f23c57] transition-colors"
+          </button>
+          <button 
             onClick={() => startCall('video')}
+            className="text-white flex items-center justify-center cursor-pointer hover:text-[#f23c57] transition-colors bg-transparent border-none"
           >
             <span className="material-symbols-outlined text-[32px]" style={{fontVariationSettings: "'FILL' 1"}}>videocam</span>
-          </Link>
+          </button>
         </div>
       </div>
 
