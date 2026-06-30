@@ -120,26 +120,24 @@ export default function CallInterface({
       }
     });
 
-    const startSignaling = async () => {
-      await myChannel.subscribe(async (status: string) => {
-        if (status === 'SUBSCRIBED') {
-          await partnerChannel.subscribe((pStatus: string) => {
-             if (pStatus === 'SUBSCRIBED') {
-                channelRef.current = { sendSignal };
+    const startSignaling = () => {
+      myChannel.subscribe();
+      partnerChannel.subscribe();
 
-                if (callStatus === 'ringing-outgoing') {
-                   sendSignal('invite');
-                   interval = setInterval(() => sendSignal('invite'), 2000);
-                   timeout = setTimeout(() => router.push(`/messages/${partnerId}`), 30000);
-                } else if (callStatus === 'ringing-incoming') {
-                   sendSignal('ringing');
-                   interval = setInterval(() => sendSignal('ringing'), 2000);
-                   timeout = setTimeout(() => router.push(`/messages/${partnerId}`), 30000);
-                }
-             }
-          });
+      // Ensure sendSignal works even if SUBSCRIBED is missed due to channel reuse
+      channelRef.current = { sendSignal };
+
+      setTimeout(() => {
+        if (callStatus === 'ringing-outgoing') {
+           sendSignal('invite');
+           interval = setInterval(() => sendSignal('invite'), 2000);
+           timeout = setTimeout(() => router.push(`/messages/${partnerId}`), 30000);
+        } else if (callStatus === 'ringing-incoming') {
+           sendSignal('ringing');
+           interval = setInterval(() => sendSignal('ringing'), 2000);
+           timeout = setTimeout(() => router.push(`/messages/${partnerId}`), 30000);
         }
-      });
+      }, 500); // 500ms delay to let both channels connect to Realtime
     };
 
     if (callStatus === 'ringing-incoming' || callStatus === 'ringing-outgoing') {

@@ -47,10 +47,6 @@ export default function GlobalCallListener() {
   useEffect(() => {
     if (!currentUserId) return;
     
-    // Check if we are already in a call page to avoid redirect loops
-    // and to know if we should reply with 'busy'
-    const isInCallPage = window.location.pathname.startsWith('/call/');
-
     console.log("[GlobalCallListener] Subscribing to Broadcast for incoming calls...");
 
     const channelName = `user_signal_${currentUserId}`;
@@ -61,9 +57,12 @@ export default function GlobalCallListener() {
         const callerId = payload.callerId;
         const callType = payload.callType || 'video';
 
+        const currentPath = window.location.pathname;
+        const isInCallPage = currentPath.startsWith('/call/');
+
         if (isInCallPage) {
           // If we are already handling a call from this exact user, ignore the duplicate invite.
-          if (window.location.pathname.includes(`/call/${callerId}`)) {
+          if (currentPath.includes(`/call/${callerId}`)) {
              return;
           }
 
