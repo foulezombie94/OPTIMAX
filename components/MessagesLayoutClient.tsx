@@ -229,21 +229,24 @@ export default function MessagesLayoutClient({
           }`}>
             
             {/* Search Bar */}
-            <div className="p-3 pb-2 flex items-center">
-              <div className="relative flex items-center bg-[#262628] rounded-full px-3 py-1.5 transition-colors flex-grow">
+            <div className="px-4 py-3 flex items-center gap-2">
+              <div className="relative flex items-center bg-white/5 hover:bg-white/10 border border-white/5 focus-within:border-white/20 rounded-xl px-3 py-2 transition-all flex-grow">
                 <span className="material-symbols-outlined text-[#8e8e93] text-[20px] mr-2 select-none">search</span>
                 <input
                   type="text"
-                  placeholder="Rechercher"
+                  placeholder="Rechercher un contact..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-transparent border-none outline-none text-white placeholder:text-[#8e8e93] text-[15px] font-medium"
+                  className="w-full bg-transparent border-none outline-none text-white placeholder:text-[#8e8e93] text-[14px] font-medium"
                 />
               </div>
+              <Link href="/messages/friends" className="w-10 h-10 rounded-xl bg-white/5 hover:bg-white/10 hover:border-white/20 border border-white/5 flex items-center justify-center transition-all shrink-0 group relative">
+                 <span className="material-symbols-outlined text-white/70 group-hover:text-white" style={{ fontVariationSettings: "'wght' 300" }}>person_add</span>
+              </Link>
             </div>
 
             {/* Active section */}
-            <div className="pt-2 pb-4 border-b border-white/10">
+            <div className="pb-3 mb-2 border-b border-white/5">
               <div className="flex items-center gap-4 overflow-x-auto px-4 pb-2 scrollbar-none">
                 {partnerList
                   .filter(p => p.isOnline)
@@ -303,14 +306,14 @@ export default function MessagesLayoutClient({
 
 
             {/* Contact List */}
-            <div className="flex-grow overflow-y-auto scrollbar-none">
+            <div className="flex-grow overflow-y-auto scrollbar-none px-2 space-y-0.5">
               {filteredPartners.length === 0 ? (
                 <div className="p-8 text-center text-[#8e8e93] flex flex-col items-center justify-center h-48">
                   <span className="material-symbols-outlined text-[36px] mb-3 opacity-50">chat_bubble</span>
                   <p className="text-sm">Aucune conversation trouvée</p>
                 </div>
               ) : (
-                <div className="flex flex-col">
+                <div className="flex flex-col space-y-1">
                   {filteredPartners.map((partner) => {
                     const isSelected = currentChatId === partner.id;
                     const isThisPartnerCalling = activeCallStatus !== 'idle' && activeCallPartnerId === partner.id;
@@ -328,8 +331,8 @@ export default function MessagesLayoutClient({
                             partner
                           });
                         }}
-                        className={`pl-4 pr-3 py-3 flex items-center transition-all cursor-pointer border-b border-[#1a1a1c] ${
-                          isSelected ? 'bg-white/5' : 'hover:bg-white/5'
+                        className={`px-3 py-3 flex items-center transition-all cursor-pointer rounded-xl ${
+                          isSelected ? 'bg-white/10' : 'hover:bg-white/5'
                         }`}
                       >
                         {/* Avatar */}
@@ -380,14 +383,14 @@ export default function MessagesLayoutClient({
                               );
                             })()}
                             <span className="mx-1 text-[#8e8e93]">&bull;</span>
-                            <span className="shrink-0 text-[#8e8e93]">
+                            <span className="shrink-0 text-[#8e8e93]" suppressHydrationWarning>
                               {partner.latestMessageAt}
                             </span>
                           </div>
                         </div>
 
                         {/* Right side actions */}
-                        <div className="shrink-0 flex flex-col items-center justify-center ml-2 border-l border-[#1a1a1c] pl-4 w-[60px] h-full">
+                        <div className="shrink-0 flex flex-col items-center justify-center ml-2 border-l border-white/5 pl-4 w-[60px] h-full">
                           {isThisPartnerCalling ? (
                             <div className="relative flex items-center justify-center w-8 h-8 rounded-full bg-primary text-black shadow-[0_0_15px_rgba(77,142,255,0.5)] animate-pulse">
                               <span className="absolute inset-0 rounded-full bg-primary/40 animate-ping"></span>

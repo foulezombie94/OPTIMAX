@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
+import CustomVideoPlayer from './CustomVideoPlayer';
 
 const POPULAR_EMOJIS = [
   '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇',
@@ -192,6 +193,7 @@ export default function ChatWindow({
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -455,11 +457,49 @@ export default function ChatWindow({
     await sendDirectMessage(content);
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const isImage = file.type.startsWith('image/');
-      sendDirectMessage(isImage ? `[Image] ${file.name}` : `[Fichier] ${file.name}`);
+      setIsUploading(true);
+      const isVideo = file.type.startsWith('video/') || !!file.name.match(/\.(mp4|mov|avi|mkv)$/i);
+      const isImage = file.type.startsWith('image/') || !!file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+      
+      const tempId = crypto.randomUUID();
+      const tempMsg: Message = {
+        id: tempId,
+        sender_id: currentUserId,
+        content: `__UPLOADING__|${file.name}`,
+        created_at: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        raw_date: new Date().toISOString(),
+        isPdf: false,
+      };
+      setMessages(prev => [...prev, tempMsg]);
+      
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${currentUserId}-${Date.now()}.${fileExt}`;
+      const { error } = await supabase.storage
+        .from('chat_attachments')
+        .upload(fileName, file);
+
+      setMessages(prev => prev.filter(m => m.id !== tempId));
+
+      if (error) {
+        console.error('Error uploading file:', error);
+        alert('Erreur lors du téléversement du fichier.');
+        setIsUploading(false);
+        return;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('chat_attachments')
+        .getPublicUrl(fileName);
+
+      let prefix = '[Fichier]';
+      if (isVideo) prefix = '[Vidéo]';
+      else if (isImage) prefix = '[Image]';
+
+      await sendDirectMessage(`${prefix} ${publicUrl}`);
+      setIsUploading(false);
     }
   };
 
@@ -559,11 +599,55 @@ export default function ChatWindow({
                            <div className="flex items-center gap-3">
                              <span className="material-symbols-outlined text-white text-[24px]">picture_as_pdf</span>
                              <div className="min-w-0">
-                               <h4 className="text-[14px] font-bold text-white truncate">{msg.content}</h4>
+                               <h4 className="text-[14px] font-bold text-white truncate">{msg.content.replace(/^\[.*?\] /, '')}</h4>
                              </div>
                            </div>
                         ) : msg.content.startsWith('__AUDIO__') ? (
                           <AudioMessageBubble content={msg.content} isMe={isMe} />
+                        ) : msg.content.startsWith('__UPLOADING__|') ? (
+                           <div className="flex flex-col gap-2.5 py-1.5 px-2 min-w-[200px]">
+                             <div className="flex items-center gap-3 w-full">
+                               <div className="relative flex items-center justify-center w-8 h-8 bg-[#333] rounded-full shrink-0 shadow-inner">
+                                 <span className="absolute inset-0 rounded-full border-[2.5px] border-[#444]"></span>
+                                 <span className="absolute inset-0 rounded-full border-[2.5px] border-t-[#f23c57] border-r-transparent border-b-transparent border-l-transparent animate-spin"></span>
+                                 <span className="material-symbols-outlined text-white text-[16px]">cloud_upload</span>
+                               </div>
+                               <div className="flex flex-col min-w-0 flex-grow">
+                                 <span className="text-[14px] font-bold text-white truncate leading-tight">{msg.content.replace('__UPLOADING__|', '')}</span>
+                                 <span className="text-[11px] font-bold text-[#888] uppercase tracking-wider mt-0.5">Envoi en cours...</span>
+                               </div>
+                             </div>
+                             <div className="w-full bg-[#333] rounded-full h-1 overflow-hidden relative shadow-inner">
+                               <div 
+                                 className="absolute top-0 bottom-0 left-0 bg-gradient-to-r from-[#f23c57] to-[#ff7b93] rounded-full"
+                                 style={{ 
+                                   width: '100%',
+                                   animation: 'progressSweep 1.5s ease-in-out infinite' 
+                                 }}
+                               ></div>
+                               <style>{`
+                                 @keyframes progressSweep {
+                                   0% { transform: translateX(-100%); }
+                                   100% { transform: translateX(100%); }
+                                 }
+                               `}</style>
+                             </div>
+                           </div>
+                        ) : msg.content.startsWith('[Vidéo] ') ? (
+                           <div className="flex flex-col w-[220px] aspect-[4/5]">
+                             <CustomVideoPlayer src={msg.content.replace('[Vidéo] ', '')} className="w-full h-full rounded-xl" />
+                           </div>
+                        ) : msg.content.startsWith('[Image] ') ? (
+                           <div className="flex flex-col">
+                             <img src={msg.content.replace('[Image] ', '')} alt="Attachment" className="max-w-[220px] max-h-[300px] rounded-lg object-cover" />
+                           </div>
+                        ) : msg.content.startsWith('[Fichier] ') ? (
+                           <div className="flex items-center gap-3">
+                             <span className="material-symbols-outlined text-white text-[24px]">draft</span>
+                             <div className="min-w-0">
+                               <h4 className="text-[14px] font-bold text-white truncate">{msg.content.replace('[Fichier] ', '')}</h4>
+                             </div>
+                           </div>
                         ) : (
                           <p className="whitespace-pre-wrap text-[15px] leading-relaxed font-medium">{msg.content}</p>
                         )}
@@ -645,7 +729,11 @@ export default function ChatWindow({
 
         {/* Input Pill */}
         <form onSubmit={sendMessage} className="flex-grow flex items-center bg-transparent border border-[#444] rounded-full px-4 py-1.5 min-h-[42px] focus-within:border-[#666] transition-colors relative">
-          {isRecording ? (
+          {isUploading ? (
+            <div className="w-full flex items-center justify-center h-[24px] pt-1">
+              <div className="w-5 h-5 border-2 border-[#f23c57] border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          ) : isRecording ? (
             <div className="w-full flex items-center justify-between px-3 text-[#f23c57] font-medium h-[24px] pt-1 gap-4">
               <div className="flex-grow flex items-center gap-[3px] h-5 overflow-hidden">
                  {/* Live recording waveform */}

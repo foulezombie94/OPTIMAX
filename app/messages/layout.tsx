@@ -7,6 +7,16 @@ export const metadata = {
   title: 'Messages - OptiMax',
 };
 
+type LatestMessage = {
+  partner_id: string;
+  content: string | null;
+  sender_id: string;
+  receiver_id: string;
+  is_read: boolean;
+  created_at: string;
+  read_at: string | null;
+};
+
 export default async function MessagesLayout({
   children,
 }: {
@@ -24,7 +34,7 @@ export default async function MessagesLayout({
 
   // Format and sort partners
   const sortedPartners = partners.map(partner => {
-    const latestMsg = latestMsgs?.find((m: any) => m.partner_id === partner.id);
+    const latestMsg = latestMsgs?.find((m: LatestMessage) => m.partner_id === partner.id);
     
     let snippet = 'Cliquer pour ouvrir la discussion';
     if (latestMsg) {
@@ -32,18 +42,21 @@ export default async function MessagesLayout({
         snippet = '📞 Appel vocal';
       } else if (latestMsg.content === '__CALL_INITIATED_VIDEO__') {
         snippet = '📹 Appel vidéo';
-      } else if (latestMsg.content.toLowerCase().endsWith('.pdf')) {
+      } else if (latestMsg.content && latestMsg.content.toLowerCase().endsWith('.pdf')) {
         snippet = '📄 Fichier PDF';
+      } else if (latestMsg.content && latestMsg.content.startsWith('[Vidéo] ')) {
+        snippet = '🎥 Vidéo';
+      } else if (latestMsg.content && latestMsg.content.startsWith('[Image] ')) {
+        snippet = '📷 Photo';
+      } else if (latestMsg.content && latestMsg.content.startsWith('[Fichier] ')) {
+        snippet = '📁 Fichier';
       } else {
-        snippet = latestMsg.content;
+        snippet = latestMsg.content || 'Message reçu';
       }
     }
 
     const isOpenedByPartner = latestMsg ? (latestMsg.sender_id === user.id && latestMsg.is_read) : false;
-    let timeToDisplay = latestMsg ? new Date(latestMsg.created_at).getTime() : undefined;
-    if (isOpenedByPartner && latestMsg && latestMsg.read_at) {
-      timeToDisplay = new Date(latestMsg.read_at).getTime();
-    }
+    const timeToDisplay = latestMsg ? new Date(latestMsg.created_at).getTime() : undefined;
 
     return {
       id: partner.id,

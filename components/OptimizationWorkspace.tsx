@@ -7,6 +7,8 @@ const LoadingPlaceholder = () => <div className="w-full min-h-[400px] rounded-3x
 
 const CompressionDropzone = dynamic(() => import('./CompressionDropzone'), { ssr: false, loading: LoadingPlaceholder });
 const Conversion3DDropzone = dynamic(() => import('./Conversion3DDropzone'), { ssr: false, loading: LoadingPlaceholder });
+const FileConversionDropzone = dynamic(() => import('./FileConversionDropzone'), { ssr: false, loading: LoadingPlaceholder });
+const VideoEditorWorkspace = dynamic(() => import('./VideoEditorWorkspace'), { ssr: false, loading: LoadingPlaceholder });
 const ComparisonWidget = dynamic(() => import('./ComparisonWidget'), { ssr: false });
 const VideoComparisonWidget = dynamic(() => import('./VideoComparisonWidget'), { ssr: false });
 const ThreeViewer = dynamic(() => import('./OptimizationsGrid').then((mod) => mod.ThreeViewer), { ssr: false });
@@ -16,7 +18,8 @@ export default function OptimizationWorkspace() {
   const { t } = useTranslation();
   const [originalFile, setOriginalFile] = useState<File | null>(null);
   const [compressedFile, setCompressedFile] = useState<File | Blob | null>(null);
-  const [activeTab, setActiveTab] = useState<'media' | '3d'>('media');
+  const [convertedExt, setConvertedExt] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<'media' | '3d' | 'convert' | 'editor'>('media');
   const [preview3DUrl, setPreview3DUrl] = useState<string>('');
 
   useEffect(() => {
@@ -50,7 +53,7 @@ export default function OptimizationWorkspace() {
     <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
       {/* Left: Dropzone Area */}
       <div className="lg:col-span-7 flex flex-col gap-4 h-full">
-        <div className="flex bg-surface-dim p-1 rounded-xl w-fit">
+        <div className="flex bg-surface-dim p-1 rounded-xl w-fit flex-wrap">
           <button 
             onClick={() => { setActiveTab('media'); setOriginalFile(null); setCompressedFile(null); }}
             className={`px-6 py-2 rounded-lg font-label-md transition-colors ${activeTab === 'media' ? 'bg-primary text-white shadow-md' : 'text-on-surface-variant hover:text-on-surface'}`}
@@ -63,9 +66,21 @@ export default function OptimizationWorkspace() {
           >
             {t('Modèles 3D')}
           </button>
+          <button 
+            onClick={() => { setActiveTab('convert'); setOriginalFile(null); setCompressedFile(null); }}
+            className={`px-6 py-2 rounded-lg font-label-md transition-colors ${activeTab === 'convert' ? 'bg-primary text-white shadow-md' : 'text-on-surface-variant hover:text-on-surface'}`}
+          >
+            {t('Convertir')}
+          </button>
+          <button 
+            onClick={() => { setActiveTab('editor'); setOriginalFile(null); setCompressedFile(null); }}
+            className={`px-6 py-2 rounded-lg font-label-md transition-colors ${activeTab === 'editor' ? 'bg-secondary text-on-surface shadow-md' : 'text-on-surface-variant hover:text-on-surface'}`}
+          >
+            {t('Éditeur Vidéo')}
+          </button>
         </div>
         
-        {activeTab === 'media' ? (
+        {activeTab === 'media' && (
           <CompressionDropzone 
             onOptimizationStart={(file) => {
               setOriginalFile(file);
@@ -80,7 +95,9 @@ export default function OptimizationWorkspace() {
               setCompressedFile(null);
             }}
           />
-        ) : (
+        )}
+        
+        {activeTab === '3d' && (
           <Conversion3DDropzone 
             onConversionStart={(file) => {
               setOriginalFile(file);
@@ -96,6 +113,34 @@ export default function OptimizationWorkspace() {
             }}
           />
         )}
+
+        {activeTab === 'convert' && (
+          <FileConversionDropzone 
+            onConversionStart={(file) => {
+              setOriginalFile(file);
+              setCompressedFile(null);
+            }}
+            onConversionComplete={(original, converted, ext) => {
+              setOriginalFile(original);
+              setCompressedFile(converted);
+              setConvertedExt(ext);
+            }}
+            onReset={() => {
+              setOriginalFile(null);
+              setCompressedFile(null);
+            }}
+          />
+        )}
+
+        {activeTab === 'editor' && (
+          <VideoEditorWorkspace 
+            onEditComplete={(original: File, edited: File | Blob, ext: string) => {
+              setOriginalFile(original);
+              setCompressedFile(edited);
+              setConvertedExt(ext);
+            }}
+          />
+        )}
       </div>
 
       {/* Right: Post-Upload Comparison Interactive */}
@@ -104,16 +149,22 @@ export default function OptimizationWorkspace() {
         <div className="glass-panel rounded-xl p-6 flex items-center justify-between">
           <div>
             <div className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-1">
-              {activeTab === 'media' ? t('RATIO DE COMPRESSION') : t('VARIATION DE POIDS')}
+              {['convert', 'editor'].includes(activeTab) ? t('FORMAT CIBLE') : activeTab === 'media' ? t('RATIO DE COMPRESSION') : t('VARIATION DE POIDS')}
             </div>
-            <div className="font-display text-[40px] leading-[1.2] font-bold text-tertiary flex items-baseline gap-1">
-              {compressedFile ? Math.max(0, ratio) : '--'}<span className="font-code text-[14px] text-on-surface-variant">%</span>
+            <div className="font-display text-[40px] leading-[1.2] font-bold text-tertiary flex items-baseline gap-1 uppercase">
+              {['convert', 'editor'].includes(activeTab) ? (compressedFile ? convertedExt : '--') : (compressedFile ? Math.max(0, ratio) : '--')}
+              {!['convert', 'editor'].includes(activeTab) && <span className="font-code text-[14px] text-on-surface-variant">%</span>}
             </div>
           </div>
           <div className="text-right">
-            <div className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-1">{t('ESPACE ÉCONOMISÉ')}</div>
+            <div className="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-1">
+              {['convert', 'editor'].includes(activeTab) ? t('TAILLE FINALE') : t('ESPACE ÉCONOMISÉ')}
+            </div>
             <div className="font-display text-[40px] leading-[1.2] font-bold text-primary flex items-baseline gap-1 justify-end">
-              {compressedFile ? Math.max(0, Number(savedSpace)) : '--'}<span className="font-code text-[14px] text-on-surface-variant">Mo</span>
+              {['convert', 'editor'].includes(activeTab) 
+                ? (compressedFile ? (compressedFile.size / 1024 / 1024).toFixed(1) : '--') 
+                : (compressedFile ? Math.max(0, Number(savedSpace)) : '--')}
+              <span className="font-code text-[14px] text-on-surface-variant">Mo</span>
             </div>
           </div>
         </div>
