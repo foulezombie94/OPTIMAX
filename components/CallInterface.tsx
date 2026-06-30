@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 type CallInterfaceProps = {
   currentUserId: string;
@@ -11,6 +12,9 @@ type CallInterfaceProps = {
   partnerId: string;
   partnerName: string;
   partnerAvatarUrl?: string;
+  initialIncoming?: boolean;
+  initialOutgoing?: boolean;
+  initialCallType?: 'audio' | 'video';
 };
 
 type Message = {
@@ -27,42 +31,180 @@ export default function CallInterface({
   currentUserAvatarUrl, 
   partnerId, 
   partnerName, 
-  partnerAvatarUrl 
+  partnerAvatarUrl,
+  initialIncoming,
+  initialOutgoing,
+  initialCallType = 'video'
 }: CallInterfaceProps) {
+  const router = useRouter();
+  const supabase = createClient();
+
+  const [callStatus, setCallStatus] = useState<'idle' | 'ringing-incoming' | 'ringing-outgoing' | 'connected'>(
+    initialIncoming ? 'ringing-incoming' : initialOutgoing ? 'ringing-outgoing' : 'idle'
+  );
+  
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isMicOn, setIsMicOn] = useState(true);
-  const [isVideoOn, setIsVideoOn] = useState(true);
+  const [isVideoOn, setIsVideoOn] = useState(initialCallType === 'video');
+  const [callType] = useState<'audio' | 'video'>(initialCallType);
   
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const supabase = createClient();
+  
+  const pcRef = useRef<RTCPeerConnection | null>(null);
+  const channelRef = useRef<any>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
 
-  // Handle local webcam
+  const getInitials = (name: string) => name ? name.trim().charAt(0).toUpperCase() : 'U';
+
+  // --- WEBRTC SIGNALING LOGIC ---
+  const channelName = `call_signal_${[currentUserId, partnerId].sort().join('_')}`;
+
   useEffect(() => {
+    let isMounted = true;
     let stream: MediaStream | null = null;
-    
-    async function setupCamera() {
+
+    const setupMedia = async () => {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
+        stream = await navigator.mediaDevices.getUserMedia({ 
+          video: initialCallType === 'video', 
+          audio: true 
+        });
+        localStreamRef.current = stream;
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream;
         }
       } catch (err) {
-        console.error("Camera access denied or failed", err);
+        console.error("Camera/Mic access denied", err);
       }
+    };
+
+    const initCall = async () => {
+      await setupMedia();
+      
+      const pc = new RTCPeerConnection({
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      });
+      pcRef.current = pc;
+
+      if (stream) {
+        stream.getTracks().forEach(track => pc.addTrack(track, stream!));
+      }
+
+      pc.ontrack = (event) => {
+        if (remoteVideoRef.current && event.streams[0]) {
+          remoteVideoRef.current.srcObject = event.streams[0];
+        }
+      };
+
+      const channel = supabase.channel(channelName);
+      channelRef.current = channel;
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          channel.send({
+            type: 'broadcast',
+            event: 'signal',
+            payload: { type: 'ice', candidate: event.candidate, senderId: currentUserId }
+          });
+        }
+      };
+
+      channel.on('broadcast', { event: 'signal' }, async ({ payload }) => {
+        if (payload.senderId === currentUserId) return; // Ignore own signals
+
+        if (payload.type === 'call-accepted') {
+          // Callee accepted. Caller creates offer.
+          if (initialOutgoing) {
+            setCallStatus('connected');
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            channel.send({
+              type: 'broadcast',
+              event: 'signal',
+              payload: { type: 'offer', sdp: offer, senderId: currentUserId }
+            });
+          }
+        } 
+        else if (payload.type === 'call-declined') {
+          // Partner declined/ended call
+          endCall();
+        }
+        else if (payload.type === 'offer') {
+          await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          channel.send({
+            type: 'broadcast',
+            event: 'signal',
+            payload: { type: 'answer', sdp: answer, senderId: currentUserId }
+          });
+        } 
+        else if (payload.type === 'answer') {
+          await pc.setRemoteDescription(new RTCSessionDescription(payload.sdp));
+        } 
+        else if (payload.type === 'ice') {
+          try {
+            await pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
+          } catch (e) {
+            console.error('Error adding received ice candidate', e);
+          }
+        }
+      });
+
+      channel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          if (initialOutgoing) {
+            // Send wake-up DB trigger
+            await supabase.from('messages').insert({
+              sender_id: currentUserId,
+              receiver_id: partnerId,
+              content: initialCallType === 'video' ? '__CALL_INITIATED_VIDEO__' : '__CALL_INITIATED_AUDIO__'
+            });
+          }
+        }
+      });
+    };
+
+    if (initialIncoming || initialOutgoing) {
+      initCall();
     }
 
-    setupCamera();
-
     return () => {
+      isMounted = false;
       if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
+      if (pcRef.current) pcRef.current.close();
+      if (channelRef.current) supabase.removeChannel(channelRef.current);
     };
-  }, []);
+  }, [initialIncoming, initialOutgoing, currentUserId, partnerId]);
 
-  // Fetch initial chat messages and subscribe to real-time updates
+  const acceptCall = () => {
+    setCallStatus('connected');
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'signal',
+      payload: { type: 'call-accepted', senderId: currentUserId }
+    });
+  };
+
+  const declineCall = () => {
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'signal',
+      payload: { type: 'call-declined', senderId: currentUserId }
+    });
+    router.push(`/messages/${partnerId}`);
+  };
+
+  const endCall = () => {
+    declineCall(); // Broadcast end signal and redirect
+  };
+
+  // --- CHAT LOGIC ---
   useEffect(() => {
     const fetchMessages = async () => {
       const { data } = await supabase
@@ -72,7 +214,9 @@ export default function CallInterface({
         .order('created_at', { ascending: true })
         .limit(50);
         
-      if (data) setMessages(data);
+      if (data) {
+        setMessages(data.filter(m => !m.content.startsWith('__CALL_INITIATED_')));
+      }
     };
 
     fetchMessages();
@@ -85,7 +229,7 @@ export default function CallInterface({
         filter: `sender_id=eq.${partnerId}`,
       }, (payload: any) => {
         const newMessage = payload.new as Message;
-        if (newMessage.receiver_id === currentUserId) {
+        if (newMessage.receiver_id === currentUserId && !newMessage.content.startsWith('__CALL_INITIATED_')) {
           setMessages(prev => [...prev, newMessage]);
         }
       })
@@ -111,18 +255,13 @@ export default function CallInterface({
     };
 
     setInput('');
-    // Optimistic UI update
     setMessages(prev => [...prev, { ...newMsg, id: Date.now().toString(), created_at: new Date().toISOString() }]);
-
     await supabase.from('messages').insert([newMsg]);
   };
 
-  const getInitials = (name: string) => name ? name.trim().charAt(0).toUpperCase() : 'U';
-
   const toggleVideo = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getVideoTracks().forEach(track => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getVideoTracks().forEach(track => {
         track.enabled = !track.enabled;
       });
       setIsVideoOn(!isVideoOn);
@@ -130,41 +269,115 @@ export default function CallInterface({
   };
 
   const toggleMic = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getAudioTracks().forEach(track => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getAudioTracks().forEach(track => {
         track.enabled = !track.enabled;
       });
       setIsMicOn(!isMicOn);
     }
   };
 
+  // --- UI RENDERERS ---
+
+  if (callStatus === 'ringing-incoming') {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-[#131313] to-black text-white relative overflow-hidden animate-fade-in">
+        <div className="absolute inset-0 bg-[#f23c57]/10 animate-pulse"></div>
+        <div className="relative z-10 flex flex-col items-center">
+          <div className="w-32 h-32 md:w-40 md:h-40 rounded-full bg-[#222] shadow-[0_0_50px_rgba(242,60,87,0.4)] flex items-center justify-center mb-8 border-4 border-[#f23c57]/50 overflow-hidden">
+            {partnerAvatarUrl ? (
+              <img src={partnerAvatarUrl} alt={partnerName} className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-4xl font-bold">{getInitials(partnerName)}</span>
+            )}
+          </div>
+          <h2 className="text-3xl md:text-5xl font-black mb-3">{partnerName}</h2>
+          <p className="text-lg text-[#f23c57] uppercase tracking-widest font-bold mb-16 animate-bounce">
+            Appel {callType === 'video' ? 'Vidéo' : 'Vocal'} Entrant...
+          </p>
+          
+          <div className="flex items-center gap-10 md:gap-16">
+            <div className="flex flex-col items-center gap-3">
+              <button onClick={declineCall} className="w-16 h-16 md:w-20 md:h-20 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center transition-transform hover:scale-110 active:scale-95 shadow-[0_0_30px_rgba(220,38,38,0.5)]">
+                <span className="material-symbols-outlined text-3xl">call_end</span>
+              </button>
+              <span className="font-bold text-sm tracking-wider uppercase text-white/70">Décliner</span>
+            </div>
+            <div className="flex flex-col items-center gap-3">
+              <button onClick={acceptCall} className="w-16 h-16 md:w-20 md:h-20 bg-emerald-500 hover:bg-emerald-600 rounded-full flex items-center justify-center transition-transform hover:scale-110 active:scale-95 shadow-[0_0_30px_rgba(16,185,129,0.5)]">
+                <span className="material-symbols-outlined text-3xl">call</span>
+              </button>
+              <span className="font-bold text-sm tracking-wider uppercase text-white/70">Accepter</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (callStatus === 'ringing-outgoing') {
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-[#131313] to-black text-white relative overflow-hidden animate-fade-in">
+        <div className="relative z-10 flex flex-col items-center">
+          <div className="w-32 h-32 md:w-40 md:h-40 rounded-full bg-[#222] shadow-[0_0_50px_rgba(255,255,255,0.1)] flex items-center justify-center mb-8 overflow-hidden">
+            {partnerAvatarUrl ? (
+              <img src={partnerAvatarUrl} alt={partnerName} className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-4xl font-bold">{getInitials(partnerName)}</span>
+            )}
+          </div>
+          <h2 className="text-3xl md:text-4xl font-bold mb-3">{partnerName}</h2>
+          <p className="text-sm text-white/60 uppercase tracking-widest font-mono mb-16 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping"></span>
+            Sonnerie en cours...
+          </p>
+          
+          <button onClick={endCall} className="w-16 h-16 bg-red-600 hover:bg-red-700 rounded-full flex items-center justify-center transition-transform hover:scale-110 active:scale-95 shadow-[0_0_30px_rgba(220,38,38,0.5)]">
+            <span className="material-symbols-outlined text-3xl">call_end</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // --- CONNECTED UI (Original HTML Style) ---
   return (
     <div className="relative w-full h-full bg-[#131313] text-[#e5e2e1] font-sans">
-      {/* Immersive Background Video Feed (Simulated Partner) */}
-      <div className="absolute inset-0 z-0">
-        <div 
-          className="w-full h-full bg-cover bg-center object-cover" 
-          style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuBsD1ouTPaYiUWcyUPPDm4-kHCY5ANORxAJfzQUKZTL4fh6YSYqrfOdkCNiKqOIBqnLo3277-gmIjhBUZ_qktfzC3SQjqB5AbBcbgAGVdxLge4D0R6Hjrs_V2PWGIO4CsiZvP4mYHlhbH62eNWdzrqoRoM8LbGU6xVjtipcKtAEKSGGpfn6xSfTVZueXzq5-JkIGVjVbBGwCFjI-bxYm6Y0YxTJLBb4qq3MNC-W55s-vR_n-pDKMr2C5mrZ8xv7-hdU2HzEk7slHWI')" }}
-        ></div>
+      {/* Remote Video Feed (Full Screen) */}
+      <div className="absolute inset-0 z-0 bg-black">
+        <video 
+          ref={remoteVideoRef} 
+          autoPlay 
+          playsInline 
+          className={`w-full h-full object-cover ${callType === 'video' ? 'block' : 'hidden'}`} 
+        />
+        {callType === 'audio' && (
+          <div className="w-full h-full flex flex-col items-center justify-center opacity-50">
+            <div className="w-48 h-48 rounded-full bg-[#222] flex items-center justify-center mb-6 overflow-hidden border-2 border-white/10">
+              {partnerAvatarUrl ? (
+                <img src={partnerAvatarUrl} alt="partner" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-6xl font-bold">{getInitials(partnerName)}</span>
+              )}
+            </div>
+            <div className="text-white/50 text-xl flex items-center gap-2">
+              <span className="material-symbols-outlined animate-pulse text-[#f23c57]">graphic_eq</span>
+              Appel Vocal Actif
+            </div>
+          </div>
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40"></div>
       </div>
 
       {/* TopNavBar */}
       <nav className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-5 md:px-10 py-4 bg-transparent text-[#f23c57]">
         <div className="flex items-center gap-4">
-          <Link href={`/messages/${partnerId}`} className="hover:text-white transition-colors">
+          <button onClick={endCall} className="hover:text-white transition-colors cursor-pointer">
             <span className="material-symbols-outlined text-[28px]">arrow_back</span>
-          </Link>
-          <span className="text-[28px] md:text-[32px] font-bold tracking-tighter">Lumina Video</span>
+          </button>
+          <span className="text-[28px] md:text-[32px] font-bold tracking-tighter">Lumina {callType === 'video' ? 'Video' : 'Audio'}</span>
         </div>
         <div className="flex items-center gap-6">
-          <button className="text-[#e4bdbe] hover:text-[#f23c57] transition-colors scale-95 active:scale-90">
-            <span className="material-symbols-outlined text-[24px]">grid_view</span>
-          </button>
-          <button className="text-[#e4bdbe] hover:text-[#f23c57] transition-colors scale-95 active:scale-90">
-            <span className="material-symbols-outlined text-[24px]">info</span>
-          </button>
           <div className="w-10 h-10 rounded-full border border-white/20 overflow-hidden bg-[#333] flex items-center justify-center shrink-0">
             {currentUserAvatarUrl ? (
               <img alt="User" src={currentUserAvatarUrl} className="w-full h-full object-cover" />
@@ -182,27 +395,29 @@ export default function CallInterface({
         <div className="flex-1 flex flex-col relative h-full">
           {/* Live Indicator */}
           <div className="absolute top-4 left-4 flex items-center gap-2 bg-black/40 backdrop-blur-md px-4 py-2 rounded-full border border-white/10">
-            <div className="w-2.5 h-2.5 rounded-full bg-[#f23c57] live-pulse"></div>
+            <div className="w-2.5 h-2.5 rounded-full bg-[#f23c57] animate-pulse"></div>
             <span className="text-[12px] font-bold text-[#f23c57] uppercase tracking-widest">En Direct</span>
           </div>
 
           {/* Self View Floating Window */}
-          <div className="absolute top-4 right-4 w-48 h-64 neo-glass-panel rounded-lg overflow-hidden shadow-2xl z-20 bg-black">
-            <video 
-              ref={videoRef} 
-              autoPlay 
-              playsInline 
-              muted 
-              className="w-full h-full object-cover transform scale-x-[-1]"
-            />
-            <div className="absolute bottom-2 left-2 bg-black/60 px-2 py-1 rounded backdrop-blur-sm">
-              <span className="text-[12px] font-bold text-white">Vous</span>
+          {callType === 'video' && (
+            <div className="absolute top-4 right-4 w-32 h-44 md:w-48 md:h-64 rounded-xl overflow-hidden shadow-2xl z-20 bg-black border border-white/20">
+              <video 
+                ref={localVideoRef} 
+                autoPlay 
+                playsInline 
+                muted 
+                className="w-full h-full object-cover transform scale-x-[-1]"
+              />
+              <div className="absolute bottom-2 left-2 bg-black/60 px-2 py-1 rounded backdrop-blur-sm">
+                <span className="text-[12px] font-bold text-white">Vous</span>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* SideNavBar (Chat) */}
-        <aside className="fixed right-0 top-1/2 -translate-y-1/2 z-40 hidden md:flex flex-col h-[calc(100vh-120px)] w-[350px] rounded-2xl m-5 bg-white/5 backdrop-blur-2xl border border-white/20 shadow-2xl transition-all duration-300">
+        <aside className="fixed right-0 top-1/2 -translate-y-1/2 z-40 hidden lg:flex flex-col h-[calc(100vh-120px)] w-[350px] rounded-2xl m-5 bg-white/5 backdrop-blur-2xl border border-white/20 shadow-2xl transition-all duration-300">
           {/* Header */}
           <div className="p-5 border-b border-white/10 flex items-center gap-3">
              <div className="w-10 h-10 rounded-full bg-[#222] shrink-0 overflow-hidden flex items-center justify-center">
@@ -219,13 +434,7 @@ export default function CallInterface({
           </div>
           
           {/* Messages Area */}
-          <div className="flex-grow overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-            {messages.length === 0 && (
-              <div className="text-center text-[#888] text-[13px] mt-10">
-                L'historique du chat est synchronisé en direct.
-              </div>
-            )}
-            
+          <div className="flex-grow overflow-y-auto p-4 space-y-4 scrollbar-none">
             {messages.map((msg, idx) => {
               const isMe = msg.sender_id === currentUserId;
               return (
@@ -240,11 +449,7 @@ export default function CallInterface({
                     </div>
                   )}
                   <div className={`max-w-[75%] p-3 text-[14px] leading-relaxed break-words shadow-sm backdrop-blur-md ${isMe ? 'bg-[#f23c57]/80 text-white rounded-2xl rounded-tr-none border border-[#f23c57]' : 'bg-white/10 text-white rounded-2xl rounded-tl-none border border-white/10'}`}>
-                    {msg.content.startsWith('[Image]') ? (
-                       <img src={msg.content.replace('[Image] ', '')} alt="GIF" className="rounded-lg w-full max-w-[200px]" />
-                    ) : (
-                       msg.content
-                    )}
+                    {msg.content}
                   </div>
                 </div>
               );
@@ -271,30 +476,24 @@ export default function CallInterface({
       </main>
 
       {/* BottomNavBar */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 md:gap-4 px-4 md:px-6 py-2 mb-6 md:mb-10 bg-white/10 backdrop-blur-xl rounded-full max-w-fit mx-auto border border-white/20 glow-accent">
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 md:gap-4 px-4 md:px-6 py-2 mb-6 md:mb-10 bg-white/10 backdrop-blur-xl rounded-full max-w-fit mx-auto border border-white/20 shadow-2xl">
         
-        <button onClick={toggleMic} className={`flex flex-col items-center justify-center w-14 h-14 rounded-full hover:bg-white/20 transition-all active:scale-90 cursor-pointer ${!isMicOn ? 'bg-white/20 text-white' : 'text-[#e5e2e1]'}`}>
-          <span className="material-symbols-outlined text-[24px]">{isMicOn ? 'mic' : 'mic_off'}</span>
+        <button onClick={toggleMic} className={`flex flex-col items-center justify-center w-12 h-12 md:w-14 md:h-14 rounded-full hover:bg-white/20 transition-all active:scale-90 cursor-pointer ${!isMicOn ? 'bg-white/20 text-white' : 'text-[#e5e2e1]'}`}>
+          <span className="material-symbols-outlined text-[20px] md:text-[24px]">{isMicOn ? 'mic' : 'mic_off'}</span>
         </button>
         
-        <button onClick={toggleVideo} className={`flex flex-col items-center justify-center rounded-full w-16 h-16 scale-110 shadow-[0_0_20px_rgba(242,60,87,0.4)] transition-all active:scale-90 cursor-pointer ${isVideoOn ? 'bg-[#f23c57] text-white' : 'bg-white/20 text-white'}`}>
-          <span className="material-symbols-outlined text-[26px]" style={{fontVariationSettings: "'FILL' 1"}}>{isVideoOn ? 'videocam' : 'videocam_off'}</span>
-        </button>
-        
-        <button className="flex flex-col items-center justify-center w-14 h-14 rounded-full text-[#e5e2e1] hover:bg-white/20 transition-all active:scale-90 cursor-pointer">
-          <span className="material-symbols-outlined text-[24px]">screen_share</span>
-        </button>
-        
-        <button className="flex flex-col items-center justify-center w-14 h-14 rounded-full text-[#e5e2e1] hover:bg-white/20 transition-all active:scale-90 cursor-pointer">
-          <span className="material-symbols-outlined text-[24px]">more_horiz</span>
-        </button>
+        {callType === 'video' && (
+          <button onClick={toggleVideo} className={`flex flex-col items-center justify-center rounded-full w-14 h-14 md:w-16 md:h-16 scale-110 shadow-[0_0_20px_rgba(242,60,87,0.4)] transition-all active:scale-90 cursor-pointer ${isVideoOn ? 'bg-[#f23c57] text-white' : 'bg-white/20 text-white'}`}>
+            <span className="material-symbols-outlined text-[24px] md:text-[26px]" style={{fontVariationSettings: "'FILL' 1"}}>{isVideoOn ? 'videocam' : 'videocam_off'}</span>
+          </button>
+        )}
         
         <div className="w-px h-8 bg-white/20 mx-1 md:mx-2"></div>
         
-        <Link href={`/messages/${partnerId}`} className="flex items-center justify-center bg-[#f23c57] text-white rounded-full px-5 py-3 md:px-6 md:py-3 hover:bg-[#d92c46] transition-all shadow-[0_0_20px_rgba(242,60,87,0.5)] active:scale-90 cursor-pointer">
+        <button onClick={endCall} className="flex items-center justify-center bg-red-600 text-white rounded-full px-5 py-3 md:px-6 md:py-3 hover:bg-red-700 transition-all shadow-[0_0_20px_rgba(220,38,38,0.5)] active:scale-90 cursor-pointer">
           <span className="material-symbols-outlined text-[22px] md:mr-2">call_end</span>
           <span className="text-[13px] font-bold tracking-wider hidden md:block">QUITTER</span>
-        </Link>
+        </button>
       </div>
     </div>
   );

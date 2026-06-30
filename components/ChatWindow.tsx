@@ -324,18 +324,6 @@ export default function ChatWindow({
     setIsRecording(false);
   };
 
-  const startCall = (type: 'audio' | 'video') => {
-    window.dispatchEvent(new CustomEvent('start-global-call', {
-      detail: {
-        partnerId,
-        partnerName,
-        partnerUsername,
-        partnerAvatarUrl,
-        type
-      }
-    }));
-  };
-
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -554,13 +542,13 @@ export default function ChatWindow({
         <div className="flex items-center gap-5 pr-2">
           {/* Call Actions */}
           <button 
-            onClick={() => startCall('audio')}
+            onClick={() => router.push(`/call/${partnerId}?type=audio&outgoing=true`)}
             className="text-white flex items-center justify-center cursor-pointer hover:text-[#f23c57] transition-colors bg-transparent border-none"
           >
             <span className="material-symbols-outlined text-[28px]" style={{fontVariationSettings: "'FILL' 1"}}>call</span>
           </button>
           <button 
-            onClick={() => startCall('video')}
+            onClick={() => router.push(`/call/${partnerId}?type=video&outgoing=true`)}
             className="text-white flex items-center justify-center cursor-pointer hover:text-[#f23c57] transition-colors bg-transparent border-none"
           >
             <span className="material-symbols-outlined text-[32px]" style={{fontVariationSettings: "'FILL' 1"}}>videocam</span>

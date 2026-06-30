@@ -8,9 +8,21 @@ export async function generateMetadata() {
   };
 }
 
-export default async function CallPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function CallPage({ 
+  params,
+  searchParams,
+}: { 
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
   const partnerId = resolvedParams.id;
+  
+  const incoming = resolvedSearchParams.incoming === 'true';
+  const outgoing = resolvedSearchParams.outgoing === 'true';
+  const callType = (resolvedSearchParams.type as 'audio' | 'video') || 'video';
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -49,6 +61,9 @@ export default async function CallPage({ params }: { params: Promise<{ id: strin
         partnerId={partnerId}
         partnerName={partnerName}
         partnerAvatarUrl={partner.avatar_url || undefined}
+        initialIncoming={incoming}
+        initialOutgoing={outgoing}
+        initialCallType={callType}
       />
     </div>
   );
