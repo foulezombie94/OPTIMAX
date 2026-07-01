@@ -41,6 +41,8 @@ type Message = {
   isPdf?: boolean;
   fileSize?: string;
   reactions?: string[];
+  message_type?: string;
+  media_url?: string;
 };
 
 const getInitials = (name: string) => {
@@ -88,24 +90,34 @@ const formatDuration = (seconds: number) => {
   return `${m}:${s.toString().padStart(2, '0')}`;
 };
 
-const AudioMessageBubble = ({ content, isMe }: { content: string, isMe: boolean }) => {
+const AudioMessageBubble = ({ content, isMe, mediaUrl }: { content: string, isMe: boolean, mediaUrl?: string }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [showTranscript, setShowTranscript] = useState(false);
+  const [loadedDuration, setLoadedDuration] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Parse __AUDIO__|duration|base64|transcript
-  const parts = content.split(':');
-  let duration = parseInt(parts[1], 10) || 0;
-  let parsedBase64 = '';
+  // Parse __AUDIO__|duration|base64|transcript (legacy support)
+  let duration = 0;
+  let parsedBase64 = mediaUrl || '';
   let parsedTranscript = '';
 
   if (content.startsWith('__AUDIO__|')) {
      const split = content.split('|');
      duration = parseInt(split[1], 10) || 0;
-     parsedBase64 = split[2] || '';
+     parsedBase64 = split[2] || parsedBase64;
      parsedTranscript = split[3] || '';
   }
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.onloadedmetadata = () => {
+        if (audioRef.current) {
+          setLoadedDuration(audioRef.current.duration);
+        }
+      };
+    }
+  }, [parsedBase64]);
 
   const togglePlay = async () => {
      if (!parsedBase64 || !audioRef.current) return;
@@ -126,7 +138,7 @@ const AudioMessageBubble = ({ content, isMe }: { content: string, isMe: boolean 
   const handleTimeUpdate = () => {
      if (audioRef.current) {
         const current = audioRef.current.currentTime;
-        const total = audioRef.current.duration || duration || 1;
+        const total = audioRef.current.duration || loadedDuration || duration || 1;
         setProgress(current / total);
      }
   };
@@ -168,7 +180,7 @@ const AudioMessageBubble = ({ content, isMe }: { content: string, isMe: boolean 
            </div>
            <div className="flex justify-between items-center px-1">
              <span className={`text-[12px] font-mono transition-opacity duration-300 ${isPlaying ? 'opacity-0' : 'text-white/60'}`}>
-                {formatDuration(duration)}
+                {formatDuration(loadedDuration || duration)}
              </span>
              <div className="bg-white/10 px-1.5 py-0.5 rounded text-[9px] font-bold text-white/80 tracking-widest">1X</div>
            </div>
@@ -363,7 +375,7 @@ export default function ChatWindow({
     setLoading(true);
     const { data } = await supabase
       .from('messages')
-      .select('id, sender_id, content, created_at')
+      .select('id, sender_id, content, created_at, message_type, media_url')
       .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${partnerId}),and(sender_id.eq.${partnerId},receiver_id.eq.${currentUserId})`)
       .order('created_at', { ascending: false })
       .limit(50);
@@ -372,7 +384,7 @@ export default function ChatWindow({
       // Reverse so oldest is first in the chat UI
       const reversedData = [...data].reverse();
       const formatted = reversedData
-        .map((msg: { id: string; sender_id: string; content: string; created_at: string }) => {
+        .map((msg: { id: string; sender_id: string; content: string; created_at: string; message_type?: string; media_url?: string }) => {
         const isPdf = msg.content.toLowerCase().endsWith('.pdf');
         return {
           id: msg.id,
@@ -382,6 +394,8 @@ export default function ChatWindow({
           raw_date: msg.created_at,
           isPdf,
           fileSize: isPdf ? '1.2 MB' : undefined,
+          message_type: msg.message_type,
+          media_url: msg.media_url,
         };
       });
       setMessages(formatted);
@@ -405,27 +419,35 @@ export default function ChatWindow({
           filter: `receiver_id=eq.${currentUserId}`
         },
         (payload: any) => {
-          const newMsg = payload.new as { id: string; sender_id: string; content: string; created_at: string };
-          if (newMsg.sender_id === partnerId) {
-            const isPdf = newMsg.content.toLowerCase().endsWith('.pdf');
-            setMessages((prev) => [...prev, {
-              id: newMsg.id,
-              sender_id: newMsg.sender_id,
-              content: newMsg.content,
-              created_at: new Date(newMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              raw_date: newMsg.created_at,
-              isPdf,
-              fileSize: isPdf ? '1.2 MB' : undefined,
-            }]);
+          const basicMsg = payload.new as { id: string; sender_id: string; content: string; created_at: string };
+          if (basicMsg.sender_id === partnerId) {
+            // Fetch the full row to ensure we get new columns (message_type, media_url) 
+            // in case Supabase Realtime payload cache is stale
+            supabase.from('messages').select('*').eq('id', basicMsg.id).single().then(({ data: fullMsg }: { data: any }) => {
+              if (fullMsg) {
+                const isPdf = fullMsg.content.toLowerCase().endsWith('.pdf');
+                setMessages((prev) => [...prev, {
+                  id: fullMsg.id,
+                  sender_id: fullMsg.sender_id,
+                  content: fullMsg.content,
+                  created_at: new Date(fullMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                  raw_date: fullMsg.created_at,
+                  isPdf,
+                  fileSize: isPdf ? '1.2 MB' : undefined,
+                  message_type: fullMsg.message_type,
+                  media_url: fullMsg.media_url
+                }]);
 
-            // Automatically mark this new message as read since the chat is open
-            supabase
-              .from('messages')
-              .update({ is_read: true, read_at: new Date().toISOString() })
-              .eq('id', newMsg.id)
-              .then(({ error }: { error: any }) => {
-                if (error) console.error('Error marking new message as read:', error);
-              });
+                // Automatically mark this new message as read since the chat is open
+                supabase
+                  .from('messages')
+                  .update({ is_read: true, read_at: new Date().toISOString() })
+                  .eq('id', fullMsg.id)
+                  .then(({ error }: { error: any }) => {
+                    if (error) console.error('Error marking new message as read:', error);
+                  });
+              }
+            });
           }
         }
       )
@@ -499,7 +521,7 @@ export default function ChatWindow({
       const isImage = file.type.startsWith('image/') || !!file.name.match(/\.(jpg|jpeg|png|gif|webp)$/i);
       
       const tempId = crypto.randomUUID();
-      const tempMsg: Message = {
+      const tempMsg: any = {
         id: tempId,
         sender_id: currentUserId,
         content: `__UPLOADING__|${file.name}`,
@@ -638,8 +660,10 @@ export default function ChatWindow({
                                <h4 className="text-[14px] font-bold text-white truncate">{msg.content.replace(/^\[.*?\] /, '')}</h4>
                              </div>
                            </div>
-                        ) : msg.content.startsWith('__AUDIO__') ? (
-                          <AudioMessageBubble content={msg.content} isMe={isMe} />
+                        ) : msg.message_type === 'audio' || msg.content.startsWith('__AUDIO__') ? (
+                          <AudioMessageBubble content={msg.content} isMe={isMe} mediaUrl={msg.media_url} />
+                        ) : msg.message_type === 'gif' && msg.media_url ? (
+                          <img src={msg.media_url} alt="GIF" className="max-w-[200px] rounded-lg mt-1" />
                         ) : msg.content.startsWith('__UPLOADING__|') ? (
                            <div className="flex flex-col gap-2.5 py-1.5 px-2 min-w-[200px]">
                              <div className="flex items-center gap-3 w-full">
@@ -691,7 +715,16 @@ export default function ChatWindow({
                              </div>
                            </div>
                         ) : (
-                          <p className="whitespace-pre-wrap text-[15px] leading-relaxed font-medium">{msg.content}</p>
+                          <div className="relative group/text">
+                            <p className="whitespace-pre-wrap text-[15px] leading-relaxed font-medium pr-6">{msg.content}</p>
+                            <button
+                              onClick={() => navigator.clipboard.writeText(msg.content)}
+                              className="absolute top-0 right-0 opacity-0 group-hover/text:opacity-100 text-[#888] hover:text-white transition-opacity bg-[#1c1c1e] pl-2"
+                              title="Copier le message"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">content_copy</span>
+                            </button>
+                          </div>
                         )}
                         
                       </div>
@@ -714,10 +747,21 @@ export default function ChatWindow({
                                <h4 className="text-[14px] font-bold text-white truncate">{msg.content}</h4>
                              </div>
                            </div>
-                        ) : msg.content.startsWith('__AUDIO__') ? (
-                          <AudioMessageBubble content={msg.content} isMe={isMe} />
+                        ) : msg.message_type === 'audio' || msg.content.startsWith('__AUDIO__') ? (
+                          <AudioMessageBubble content={msg.content} isMe={isMe} mediaUrl={msg.media_url} />
+                        ) : msg.message_type === 'gif' && msg.media_url ? (
+                          <img src={msg.media_url} alt="GIF" className="max-w-[200px] rounded-lg mt-1" />
                         ) : (
-                          <p className="whitespace-pre-wrap text-[15px] leading-relaxed font-medium">{msg.content}</p>
+                          <div className="relative group/text">
+                            <p className="whitespace-pre-wrap text-[15px] leading-relaxed font-medium pr-6">{msg.content}</p>
+                            <button
+                              onClick={() => navigator.clipboard.writeText(msg.content)}
+                              className="absolute top-0 right-0 opacity-0 group-hover/text:opacity-100 text-[#888] hover:text-white transition-opacity bg-[#1c1c1e] pl-2"
+                              title="Copier le message"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">content_copy</span>
+                            </button>
+                          </div>
                         )}
                         
                       </div>
